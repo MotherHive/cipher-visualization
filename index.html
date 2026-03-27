@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cipher Visualization</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+
+  <link rel="stylesheet" href="css/style-example.css" />
+</head>
+ 
+<body>
+    <div id="app">
+
+        <header id="site-header">
+            <h1 class="site-title">Cipher Attacks</h1>
+            <span class="site-meta">CS 101 — Spring 2026</span>
+        </header>
+        
+        <nav id="tab-nav" role="tablist">
+            <button role="tab" data-tab="intro"          class="tab-btn active">Intro</button>
+            <button role="tab" data-tab="caesar"         class="tab-btn">Caesar</button>
+            <button role="tab" data-tab="frequency"      class="tab-btn">Frequency</button>
+            <button role="tab" data-tab="transposition"  class="tab-btn">Transposition</button>
+            <button role="tab" data-tab="timing"         class="tab-btn">Timing Attack</button>
+            <button role="tab" data-tab="hash"           class="tab-btn">Hash Viz</button>
+            <button role="tab" data-tab="modern"         class="tab-btn">Modern Crypto</button>
+        </nav>
+        
+
+        <main id="content">
+        
+            <!-- INTRO -->
+            <section id="intro" class="tab-panel active" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- CAESAR CIPHER + BRUTE FORCE -->
+            <section id="caesar" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- FREQUENCY ANALYSIS -->
+            <section id="frequency" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- TRANSPOSITION GRID ATTACK -->
+            <section id="transposition" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- TIMING ATTACK -->
+            <section id="timing" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- HASH VISUALIZER -->
+            <section id="hash" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+        
+            <!-- WHY MODERN CRYPTO WORKS -->
+            <section id="modern" class="tab-panel" role="tabpanel">
+            <!-- fill in -->
+            </section>
+
+        </main>
+
+    </div>
+ 
+  <script src="js/main.js"></script>
+  <script src="js/caesar.js"></script>
+  <script src="js/frequency.js"></script>
+  <script src="js/transposition.js"></script>
+  <script src="js/timing.js"></script>
+  <script src="js/hash.js"></script>
+ 
+</body>
+</html>
