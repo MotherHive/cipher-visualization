@@ -2,17 +2,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cipher Visualization</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cipher Visualization</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
 
-  <link rel="stylesheet" href="css/style-example.css" />
+    <link rel="stylesheet" href="css/style.css" />
 </head>
  
 <body>
@@ -43,7 +43,19 @@
         
             <!-- CAESAR CIPHER + BRUTE FORCE -->
             <section id="caesar" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
+                <textarea class="input-text" rows="4" cols="60">HELLO WORLD</textarea>
+
+                <br><br>
+
+                <label>Shift: <span class="shift-val">3</span></label>
+                <input type="range" class="shift-slider" min="0" max="25" value="3" />
+
+                <div class="text-grid"></div>
+
+                <h3>Output:</h3>
+                <div class="output"></div>
+
+
             </section>
         
             <!-- FREQUENCY ANALYSIS -->
@@ -74,13 +86,8 @@
         </main>
 
     </div>
- 
-  <script src="js/main.js"></script>
-  <script src="js/caesar.js"></script>
-  <script src="js/frequency.js"></script>
-  <script src="js/transposition.js"></script>
-  <script src="js/timing.js"></script>
-  <script src="js/hash.js"></script>
+
+    <script type="module" src="js/main.js"></script>
  
 </body>
 </html>

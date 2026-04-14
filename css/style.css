@@ -282,6 +282,88 @@ h6 { font-size: var(--text-base);}
 }
 
 
+/* ============================================
+  7. Tab Elements
+   ============================================ */
+/* General container styling */
+.shift-slider {
+  --track-color: var(--accent);
+  --height: 2px;
+
+  -webkit-appearance: none;
+  appearance: none;
+
+  width: 220px;
+  height: 20px; /* 👈 bigger hitbox */
+  background: transparent;
+}
+
+/* One source of truth for the Track */
+.shift-slider::-webkit-slider-runnable-track {
+  background: var(--track-color);
+  height: var(--height);
+  border-radius: 5px;
+}
+
+.shift-slider::-moz-range-track {
+  background: var(--track-color);
+  height: var(--height);
+  border-radius: 5px;
+}
+
+.shift-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: var(--track-color);
+  border-radius: 0%;
+  height: 16px;
+  width: 6px; /* 👈 slightly wider = easier to grab */
+  margin-top: -7px; /* adjust to vertically center */
+}
+
+.shift-slider::-moz-range-thumb {
+  background: var(--track-color);
+  height: 16px;
+  border-radius: 0%;
+  width: 6px;
+  border: none;
+}
+
+
+.shift-val {
+  display: inline-block;
+  width: 2ch;          /* enough for "100" */
+  text-align: right;   /* keeps numbers aligned nicely */
+}
+
+
+
+.text-grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+
+  width: 412px;   /* optional but helps make it square */
+  height: 412px;  /* same as width = perfect square */
+
+  gap: 2px;
+
+  font-family: "JetBrains Mono", monospace;
+  font-size: 16px;
+
+  padding: 10px;
+  background: #0f0f0f;
+  color: #eaeaea;
+}
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+  width: 100%;
+  height: 100%;
+}
+
 
 /* ============================================
   11. ANIMATIONS
