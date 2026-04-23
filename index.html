@@ -36,14 +36,23 @@
                 <!-- Settings Bar -->
                 <div class="settings-bar">
                     <div class="settings-controls">
-                        <label class="setting-group">
-                            <span class="setting-label">Cipher Type</span>
-                            <select class="cipher-select">
+                        <div class="setting-group">
+                            <div class="setting-label setting-label-with-info">
+                                <label for="cipher-select">Cipher Type</label>
+                                <button
+                                    type="button"
+                                    class="cipher-info-btn"
+                                    title="Caesar shifts every printable ASCII character, including spaces and punctuation."
+                                    aria-label="Caesar info"
+                                    hidden
+                                >i</button>
+                            </div>
+                            <select id="cipher-select" class="cipher-select">
                                 <option value="caesar">Caesar</option>
                                 <option value="substitution">Substitution</option>
                                 <option value="vigenere">Vigenère</option>
                             </select>
-                        </label>
+                        </div>
 
                         <label class="setting-group">
                             <span class="setting-label">Key</span>

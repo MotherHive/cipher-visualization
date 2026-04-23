@@ -344,6 +344,39 @@ h6 { font-size: var(--text-base);}
   letter-spacing: 0.05em;
 }
 
+.setting-label-with-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.cipher-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 55%, var(--border));
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--text-muted) 75%, var(--info) 25%);
+  background: color-mix(in srgb, var(--bg-elevated) 88%, white 12%);
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.72;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cipher-info-btn:hover,
+.cipher-info-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--info) 55%, var(--border-active));
+  background: color-mix(in srgb, var(--info-dim) 30%, var(--bg-elevated));
+  color: color-mix(in srgb, var(--info) 68%, white 32%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--info-dim) 35%, transparent);
+  opacity: 1;
+}
+
 .cipher-select,
 .key-input {
   font-family: var(--font-mono);

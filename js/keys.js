@@ -1,6 +1,6 @@
-import { PRINTABLE_START, PRINTABLE_RANGE } from "./constants.js";
+import { PRINTABLE_CHARS, PRINTABLE_START, PRINTABLE_RANGE } from "./constants.js";
 
-const SUBSTITUTION_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const SUBSTITUTION_ALPHABET = PRINTABLE_CHARS.join("");
 
 export function randomKey(cipherType) {
   switch (cipherType) {
@@ -11,7 +11,7 @@ export function randomKey(cipherType) {
       let shuffled = SUBSTITUTION_ALPHABET;
 
       while (shuffled === SUBSTITUTION_ALPHABET) {
-        const alphabet = SUBSTITUTION_ALPHABET.split("");
+        const alphabet = [...PRINTABLE_CHARS];
         // Fisher-Yates shuffle
         for (let i = alphabet.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));

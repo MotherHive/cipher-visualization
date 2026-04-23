@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const panel = document.getElementById("crypto-solver");
   const cipherSelect = panel.querySelector(".cipher-select");
   const keyInput = panel.querySelector(".key-input");
+  const cipherInfoBtn = panel.querySelector(".cipher-info-btn");
   const randomizeBtn = panel.querySelector(".randomize-btn");
   const inputText = panel.querySelector(".input-text");
   const randomTextBtn = panel.querySelector(".random-text-btn");
@@ -45,7 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
   encryptBtn.addEventListener("click", () => attackPanel.reset());
 
   function syncCipherControls() {
+    const isCaesar = cipherSelect.value === "caesar";
     const solverSupported = cipherSelect.value !== "vigenere";
+    if (cipherInfoBtn) cipherInfoBtn.hidden = !isCaesar;
     solveBtn.disabled = !solverSupported;
     solveBtn.title = solverSupported ? "" : "Solver currently supports Caesar and substitution only.";
     encryptBtn.title = solverSupported ? "" : "Encrypt still works for Vigenere, but Solve is disabled.";

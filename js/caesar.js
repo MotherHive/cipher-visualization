@@ -1,5 +1,11 @@
 import { renderHistogram } from "./histogram.js";
-import { PRINTABLE_START, PRINTABLE_END, PRINTABLE_RANGE, MAX_TEXT_LENGTH } from "./constants.js";
+import {
+    PRINTABLE_START,
+    PRINTABLE_END,
+    PRINTABLE_RANGE,
+    PRINTABLE_CHARS,
+    MAX_TEXT_LENGTH,
+} from "./constants.js";
 
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
@@ -59,10 +65,26 @@ export function initCaesar(tab) {
     }
 
     function normalizeSubstitutionKey(key) {
-        const upper = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
-        if (upper.length !== 26) return null;
-        if (new Set(upper).size !== 26) return null;
-        return upper;
+        const normalized = (key ?? "").slice(0, PRINTABLE_RANGE);
+        if (normalized.length !== PRINTABLE_RANGE) return null;
+
+        const uniqueChars = new Set(normalized);
+        if (uniqueChars.size !== PRINTABLE_RANGE) return null;
+
+        for (const ch of normalized) {
+            const code = ch.charCodeAt(0);
+            if (code < PRINTABLE_START || code > PRINTABLE_END) return null;
+        }
+
+        return normalized;
+    }
+
+    function normalizeSubstitutionSourceChar(char) {
+        const code = char.charCodeAt(0);
+        if (code >= 97 && code <= 122) {
+            return String.fromCharCode(code - 32);
+        }
+        return char;
     }
 
     function substitutionEncrypt(text, key) {
@@ -71,13 +93,13 @@ export function initCaesar(tab) {
         if (!normalizedKey) return sourceText;
 
         return sourceText.split("").map((char) => {
-            const code = char.charCodeAt(0);
-            if (code >= 65 && code <= 90) {
-                return normalizedKey[code - 65];
+            const normalizedChar = normalizeSubstitutionSourceChar(char);
+            const code = normalizedChar.charCodeAt(0);
+
+            if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
+                return normalizedKey[code - PRINTABLE_START];
             }
-            if (code >= 97 && code <= 122) {
-                return normalizedKey[code - 97].toLowerCase();
-            }
+
             return char;
         }).join("");
     }
@@ -215,7 +237,7 @@ export function renderGrid(text, container) {
 }
 
 function randomPrintableChar() {
-    return String.fromCharCode(PRINTABLE_START + Math.floor(Math.random() * PRINTABLE_RANGE));
+    return PRINTABLE_CHARS[Math.floor(Math.random() * PRINTABLE_RANGE)];
 }
 
 /**
