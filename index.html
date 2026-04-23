@@ -35,34 +35,77 @@
 
                 <!-- Settings Bar -->
                 <div class="settings-bar">
-                    <label class="setting-group">
-                        <span class="setting-label">Cipher Type</span>
-                        <select class="cipher-select">
-                            <option value="caesar">Caesar</option>
-                            <option value="substitution">Substitution</option>
-                            <option value="vigenere">Vigenère</option>
-                        </select>
-                    </label>
+                    <div class="settings-controls">
+                        <label class="setting-group">
+                            <span class="setting-label">Cipher Type</span>
+                            <select class="cipher-select">
+                                <option value="caesar">Caesar</option>
+                                <option value="substitution">Substitution</option>
+                                <option value="vigenere">Vigenère</option>
+                            </select>
+                        </label>
 
-                    <label class="setting-group">
-                        <span class="setting-label">Key</span>
-                        <input type="text" class="key-input" placeholder="Enter key..." />
-                    </label>
+                        <label class="setting-group">
+                            <span class="setting-label">Key</span>
+                            <div class="key-wrap">
+                                <input type="text" class="key-input" placeholder="Enter key..." />
+                                <button class="randomize-btn" title="Random key">&#9858;</button>
+                            </div>
+                        </label>
+                    </div>
 
-                    <button class="randomize-btn">Randomize</button>
+                    <label class="setting-group setting-group-text">
+                        <span class="setting-label">Plaintext</span>
+                        <div class="textarea-wrap">
+                            <textarea class="input-text" rows="2">HELLO WORLD</textarea>
+                            <button class="random-text-btn" title="Random plaintext">&#9858;</button>
+                        </div>
+                    </label>
                 </div>
 
-                <textarea class="input-text" rows="4" cols="60">HELLO WORLD</textarea>
+                <div class="workspace">
 
-                <br><br>
+                    <!-- Left: Matrix View -->
+                    <div class="panel panel-matrix">
+                        <div class="text-grid"></div>
+                        <div class="matrix-actions">
+                            <button class="encrypt-btn">Encrypt</button>
+                            <button class="solve-btn">Solve</button>
+                        </div>
+                    </div>
 
-                <label>Shift: <span class="shift-val">3</span></label>
-                <input type="range" class="shift-slider" min="0" max="25" value="3" />
+                    <!-- Right: Analysis Panel -->
+                    <div class="panel panel-analysis">
+                        <h4 class="panel-heading">Frequency Analysis</h4>
+                        <div class="frequency-chart"></div>
+                    </div>
 
-                <div class="text-grid"></div>
+                </div>
 
-                <h3>Output:</h3>
-                <div class="output"></div>
+                <!-- Attack Panel -->
+                <div class="attack-panel" hidden>
+                    <div class="attack-body">
+                        <div class="mapping-table-wrap">
+                            <h4 class="panel-heading">Mapping</h4>
+                            <div class="mapping-table">
+                                <div class="mapping-row mapping-row-cipher"></div>
+                                <div class="mapping-row mapping-row-plain"></div>
+                            </div>
+                        </div>
+                        <div class="score-track-wrap">
+                            <h4 class="panel-heading">Fitness</h4>
+                            <div class="score-track">
+                                <canvas class="score-canvas"></canvas>
+                                <span class="score-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="attack-controls">
+                        <button class="attack-play-btn" title="Play">&#9654;</button>
+                        <button class="attack-step-btn" title="Step" disabled>&#9197;</button>
+                        <span class="attack-state">IDLE</span>
+                    </div>
+                </div>
 
             </section>
 

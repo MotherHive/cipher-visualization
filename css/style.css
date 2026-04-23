@@ -281,6 +281,18 @@ h6 { font-size: var(--text-base);}
   transform: scaleX(1.5);
 }
 
+#content {
+  grid-area: content;
+  overflow-y: auto;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-6);
+  gap: var(--space-4);
+  height: 100%;
+}
 
 /* ============================================
   7. Settings Bar
@@ -288,19 +300,41 @@ h6 { font-size: var(--text-base);}
 
 .settings-bar {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   gap: var(--space-6);
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-6);
   margin-bottom: var(--space-4);
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
 
+.settings-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
 .setting-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+.setting-group-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-group-text .textarea-wrap {
+  flex: 1;
+}
+
+.setting-group-text .input-text {
+  height: 100%;
 }
 
 .setting-label {
@@ -327,78 +361,175 @@ h6 { font-size: var(--text-base);}
   outline: none;
 }
 
+.key-wrap {
+  position: relative;
+}
+
 .key-input {
   width: 180px;
+  padding-right: var(--space-6);
 }
 
 .randomize-btn {
+  position: absolute;
+  right: var(--space-1);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  opacity: 0.4;
+  transition: opacity var(--transition-fast);
+  padding: var(--space-1);
+  line-height: 1;
+}
+
+.randomize-btn:hover {
+  opacity: 1;
+}
+
+/* ============================================
+  8. Workspace — Left/Right Split
+   ============================================ */
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  flex: 1;
+  min-height: 0; /* allows grid children to shrink */
+}
+
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+.panel-heading {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--bg);
-  background: var(--accent);
-  padding: var(--space-2) var(--space-4);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-4);
+}
+
+.textarea-wrap {
+  position: relative;
+}
+
+.textarea-wrap .input-text {
+  width: 100%;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  padding-right: var(--space-8); /* room for the dice button */
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.random-text-btn {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  opacity: 0.4;
+  transition: opacity var(--transition-fast);
+  padding: var(--space-1);
+  line-height: 1;
+}
+
+.random-text-btn:hover {
+  opacity: 1;
+}
+
+.matrix-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.encrypt-btn,
+.solve-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-6);
   border-radius: var(--radius);
   transition: opacity var(--transition-fast);
 }
 
-.randomize-btn:hover {
+.encrypt-btn {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.solve-btn {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+}
+
+.encrypt-btn:hover,
+.solve-btn:hover {
   opacity: 0.85;
 }
 
+.panel-analysis .frequency-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: hidden;
+}
+
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 18px;
+}
+
+.hist-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  width: 2ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.hist-bar-wrap {
+  flex: 1;
+  height: 12px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.hist-bar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width var(--transition);
+}
+
+.hist-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+  width: 3ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* ============================================
-  8. Tab Elements
+  9. Text Grid & Cells
    ============================================ */
-/* General container styling */
-.shift-slider {
-  --track-color: var(--accent);
-  --height: 2px;
-
-  -webkit-appearance: none;
-  appearance: none;
-
-  width: 220px;
-  height: 20px; /* 👈 bigger hitbox */
-  background: transparent;
-}
-
-/* One source of truth for the Track */
-.shift-slider::-webkit-slider-runnable-track {
-  background: var(--track-color);
-  height: var(--height);
-  border-radius: 5px;
-}
-
-.shift-slider::-moz-range-track {
-  background: var(--track-color);
-  height: var(--height);
-  border-radius: 5px;
-}
-
-.shift-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  background: var(--track-color);
-  border-radius: 0%;
-  height: 16px;
-  width: 6px; /* 👈 slightly wider = easier to grab */
-  margin-top: -7px; /* adjust to vertically center */
-}
-
-.shift-slider::-moz-range-thumb {
-  background: var(--track-color);
-  height: 16px;
-  border-radius: 0%;
-  width: 6px;
-  border: none;
-}
-
-
-.shift-val {
-  display: inline-block;
-  width: 2ch;          /* enough for "100" */
-  text-align: right;   /* keeps numbers aligned nicely */
-}
-
-
 
 .text-grid {
   display: grid;
@@ -427,6 +558,162 @@ h6 { font-size: var(--text-base);}
   height: 100%;
 }
 
+
+/* ============================================
+  10. Attack Panel
+   ============================================ */
+
+.attack-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.attack-body {
+  display: grid;
+  grid-template-columns: 7fr 3fr;
+  gap: var(--space-4);
+}
+
+.mapping-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.mapping-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mapping-row {
+  display: flex;
+  gap: 2px;
+}
+
+.mapping-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.mapping-cell[data-state="empty"] {
+  color: var(--text-dim);
+}
+
+.mapping-cell[data-state="tentative"] {
+  color: #6fbf8a;
+  background: #1a2e22;
+}
+
+.mapping-cell[data-state="locked"] {
+  color: #0a0a0a;
+  background: #2d7a4a;
+}
+
+.mapping-cell[data-state="swapping"] {
+  animation: pulse-swap 300ms ease;
+}
+
+@keyframes pulse-swap {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.2); background: var(--warning); }
+}
+
+.score-track-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.score-track {
+  position: relative;
+  flex: 1;
+  min-height: 80px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.score-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.score-value {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.attack-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.attack-play-btn,
+.attack-step-btn {
+  font-size: var(--text-sm);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  transition: opacity var(--transition-fast);
+}
+
+.attack-play-btn:hover,
+.attack-step-btn:hover {
+  opacity: 0.85;
+}
+
+.attack-step-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.attack-state {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-left: auto;
+}
+
+/* Grid cell highlighting during solve */
+.cell[data-solve="tentative"] {
+  color: #6fbf8a;
+}
+
+.cell[data-solve="locked"] {
+  color: #2d7a4a;
+}
+
+.cell[data-english="true"] {
+  background: #0d2818;
+}
+
+.cell[data-english="strong"] {
+  background: #143d24;
+}
 
 /* ============================================
   11. ANIMATIONS
