@@ -37,6 +37,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initCaesar(panel);
 
   const attackPanel = initAttackPanel(panel);
+  inputText.addEventListener("input", () => attackPanel.reset());
+  panel.querySelector(".encrypt-btn").addEventListener("click", () => attackPanel.reset());
 
   solveBtn.addEventListener("click", () => {
     const currentText = panel._getCurrentText?.();

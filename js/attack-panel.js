@@ -174,6 +174,11 @@ export function initAttackPanel(panel) {
     updateGridHighlighting(data.decoded, data.phase);
 
     if (data.phase === "SOLVED" || data.phase === "FAILED") {
+      if (data.phase === "FAILED") {
+        stateLabel.style.color = "var(--danger)";
+      } else {
+        stateLabel.style.color = "";
+      }
       stop();
     }
   }
@@ -231,6 +236,8 @@ export function initAttackPanel(panel) {
     playBtn.innerHTML = "&#9654;";
     playBtn.disabled = false;
     stepBtn.disabled = true;
+    stateLabel.style.color = "";
+    attackPanel.hidden = true;
     setState("IDLE");
     scoreValue.textContent = "0";
 
