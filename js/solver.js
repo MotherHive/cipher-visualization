@@ -116,16 +116,58 @@ const FALLBACK_QUADGRAM_MAP = new Map(
   Object.entries(FALLBACK_QUADGRAM_LOG).map(([gram, score]) => [gram.toUpperCase(), score])
 );
 
+const FALLBACK_WORD_LOG = {
+  THE: -1.05,
+  OF: -1.30,
+  AND: -1.32,
+  TO: -1.35,
+  A: -1.40,
+  IN: -1.42,
+  IS: -1.73,
+  FOR: -1.78,
+  THAT: -1.82,
+  WAS: -1.84,
+  WITH: -1.90,
+  BUT: -2.10,
+  ALL: -2.12,
+  NOT: -2.14,
+  THIS: -2.18,
+  HAVE: -2.20,
+  FROM: -2.22,
+  THEY: -2.25,
+  HIS: -2.28,
+  WERE: -2.30,
+  GLITTER: -3.20,
+};
+
+const FALLBACK_WORD_MAP = new Map(
+  Object.entries(FALLBACK_WORD_LOG)
+);
+
+const FALLBACK_WORD_FLOOR = -8;
+const COMMON_CONTRACTIONS = new Set([
+  "AREN'T", "CAN'T", "COULDN'T", "DIDN'T", "DOESN'T", "DON'T", "HADN'T",
+  "HASN'T", "HAVEN'T", "HE'D", "HE'LL", "HE'S", "HOW'S", "I'D", "I'LL",
+  "I'M", "I'VE", "ISN'T", "IT'S", "LET'S", "MIGHTN'T", "MUSTN'T", "SHE'D",
+  "SHE'LL", "SHE'S", "SHOULDN'T", "THAT'S", "THERE'S", "THEY'D", "THEY'LL",
+  "THEY'RE", "THEY'VE", "WASN'T", "WE'D", "WE'LL", "WE'RE", "WE'VE", "WEREN'T",
+  "WHAT'S", "WHERE'S", "WHO'S", "WHY'S", "WON'T", "WOULDN'T", "YOU'D", "YOU'LL",
+  "YOU'RE", "YOU'VE",
+]);
+const COMMON_APOSTROPHE_SUFFIXES = new Set(["S", "D", "LL", "RE", "VE", "M"]);
+
 function createFallbackScoringModel() {
   return {
     tables: [
       { n: 1, weight: NGRAM_WEIGHTS.get(1), floor: Math.log10(FREQ_FLOOR), entries: FALLBACK_MONOGRAM_MAP },
       { n: 4, weight: NGRAM_WEIGHTS.get(4), floor: -10, entries: FALLBACK_QUADGRAM_MAP },
     ],
+    wordEntries: FALLBACK_WORD_MAP,
+    wordFloor: FALLBACK_WORD_FLOOR,
   };
 }
 
-function hydrateScoringModel(tableSpecs, scoreScale = 1) {
+function hydrateScoringModel(tableSpecs, scoreScale = 1, wordScores = [], wordFloor = FALLBACK_WORD_FLOOR * scoreScale) {
   return {
     tables: tableSpecs
       .map((table) => ({
@@ -137,6 +179,10 @@ function hydrateScoringModel(tableSpecs, scoreScale = 1) {
         ),
       }))
       .sort((a, b) => a.n - b.n),
+    wordEntries: new Map(
+      wordScores.map(([word, score]) => [word, score / scoreScale])
+    ),
+    wordFloor: wordFloor / scoreScale,
   };
 }
 
@@ -153,7 +199,12 @@ async function loadScoringData() {
   scoringModelPromise = import(GENERATED_NGRAM_MODULE_PATH)
     .then((mod) => {
       const scoreScale = mod.GENERATED_NGRAM_SCORE_SCALE ?? 1;
-      scoringModel = hydrateScoringModel(mod.GENERATED_NGRAM_TABLES ?? [], scoreScale);
+      scoringModel = hydrateScoringModel(
+        mod.GENERATED_NGRAM_TABLES ?? [],
+        scoreScale,
+        mod.GENERATED_WORD_SCORES ?? [],
+        mod.GENERATED_WORD_FLOOR ?? FALLBACK_WORD_FLOOR * scoreScale
+      );
       return scoringModel;
     })
     .catch(() => getScoringModel());
@@ -177,15 +228,98 @@ function scoreGramWindows(letters, table) {
   return total / windowCount;
 }
 
-function scoreWordStructure(text) {
-  const words = text.toLowerCase().split(/[^a-z]+/).filter((word) => word.length > 0);
+function scoreWordStructure(text, model) {
+  const words = text.toUpperCase().match(/[A-Z]+/g) ?? [];
   let score = 0;
 
   for (const word of words) {
-    if (COMMON_WORDS.has(word)) score += 3;
-    if (word.length >= 2 && word.length <= 8) score += 0.15;
-    else if (word.length > 15) score -= 0.3;
+    const exactScore = model.wordEntries.get(word);
+
+    if (exactScore !== undefined) {
+      const relativeScore = Math.max(0, exactScore - model.wordFloor);
+      score += 1.5 + relativeScore * 1.35 + Math.min(word.length, 12) * 0.22;
+      continue;
+    }
+
+    if (word.length === 1) {
+      score += word === "A" || word === "I" ? 0.5 : -1.1;
+      continue;
+    }
+
+    if (word.length === 2) {
+      score -= 0.45;
+      continue;
+    }
+
+    if (word.length === 3) {
+      score -= 1.35;
+      continue;
+    }
+
+    score -= 2.25 + Math.min(word.length - 4, 8) * 0.35;
   }
+
+  return score;
+}
+
+function isLikelyContraction(token) {
+  const normalized = token.toUpperCase();
+  if (COMMON_CONTRACTIONS.has(normalized)) return true;
+
+  const parts = normalized.split("'");
+  if (parts.length !== 2) return false;
+
+  const [head, tail] = parts;
+  if (!head || !tail) return false;
+  if (tail === "T") return head.endsWith("N");
+
+  return COMMON_APOSTROPHE_SUFFIXES.has(tail);
+}
+
+function isLikelyHyphenatedWord(token, model) {
+  const parts = token.toUpperCase().split("-");
+  if (parts.length !== 2) return false;
+
+  const [left, right] = parts;
+  if (left.length < 2 || right.length < 2) return false;
+
+  return (
+    model.wordEntries.has(left) ||
+    model.wordEntries.has(right) ||
+    left.length + right.length >= 9
+  );
+}
+
+function scoreReadableText(text, model) {
+  let score = 0;
+
+  const weirdInlinePunctuationMatches = text.match(/[A-Za-z][^A-Za-z\s'-][A-Za-z]/g) ?? [];
+  score -= weirdInlinePunctuationMatches.length * 6.5;
+
+  const punctuatedWordTokens = text.toUpperCase().match(/[A-Z]+(?:['-][A-Z]+)+/g) ?? [];
+  for (const token of punctuatedWordTokens) {
+    if (token.includes("'")) {
+      if (isLikelyContraction(token)) score += 0.35;
+      else score -= 9 + (token.match(/'/g) ?? []).length * 1.75;
+    }
+
+    if (token.includes("-")) {
+      if (isLikelyHyphenatedWord(token, model)) score += 0.15;
+      else score -= 4.5;
+    }
+  }
+
+  const repeatedPunctuationMatches = text.match(/[^A-Za-z0-9\s]{2,}/g) ?? [];
+  score -= repeatedPunctuationMatches.length * 2.5;
+
+  const oddSingleLetterMatches = text.match(/\b(?!A\b|a\b|I\b|i\b)[A-Za-z]\b/g) ?? [];
+  score -= oddSingleLetterMatches.length * 1.2;
+
+  const vowelPoorWords = text.toUpperCase().match(/\b[BCDFGHJKLMNPQRSTVWXYZ]{4,}\b/g) ?? [];
+  score -= vowelPoorWords.length * 2.75;
+
+  const commonWordRuns = text.toUpperCase().match(/\b(THE|AND|THAT|WITH|HAVE|FROM|YOUR|HEARD|TOLD|MANY|LIFE|SOLD|OUTSIDE|BEHOLD)\b/g) ?? [];
+  score += commonWordRuns.length * 0.8;
 
   return score;
 }
@@ -207,7 +341,11 @@ function scoreTextWithModel(text, model) {
   if (totalWeight === 0) return -Infinity;
 
   // Scale back up by text length so the score still has a clear gradient.
-  return (weightedScore / totalWeight) * letters.length + scoreWordStructure(text);
+  return (
+    (weightedScore / totalWeight) * letters.length +
+    scoreWordStructure(text, model) * 1.8 +
+    scoreReadableText(text, model)
+  );
 }
 
 function scoreText(text) {
@@ -263,9 +401,11 @@ function countFrequencies(text) {
   return counts;
 }
 
-// Letters + space sorted by English frequency (most frequent first).
-// These are the only characters that matter for substitution cipher solving.
-const LETTERS_BY_FREQ = ' etaoinsrhldcumfwgypbvk\'jxqz'.split('');
+// Space + letters sorted by English frequency (most frequent first).
+// We intentionally keep the core substitution search letter-first instead of
+// spending many moves on punctuation. That makes the solver much less likely
+// to invent apostrophes where a plain letter is clearly the better read.
+const LETTERS_BY_FREQ = ' etaoinsrhldcumfwgypbvkjxqz'.split('');
 
 /**
  * Build an initial cipher->plaintext mapping by matching cipher character
@@ -487,6 +627,57 @@ function buildCaesarMapping(ciphertext, shift) {
   return mapping;
 }
 
+function runGreedyPolish(ciphertext, startingMapping, cipherChars, scoreDecoded) {
+  const mapping = { ...startingMapping };
+  let decoded = applyMapping(ciphertext, mapping);
+  let currentScore = scoreDecoded(decoded);
+  const MAX_PASSES = 8;
+
+  for (let pass = 0; pass < MAX_PASSES; pass++) {
+    let bestSwap = null;
+
+    for (let i = 0; i < cipherChars.length - 1; i++) {
+      const charA = cipherChars[i];
+
+      for (let j = i + 1; j < cipherChars.length; j++) {
+        const charB = cipherChars[j];
+        const tmp = mapping[charA];
+        mapping[charA] = mapping[charB];
+        mapping[charB] = tmp;
+
+        const swappedDecoded = applyMapping(ciphertext, mapping);
+        const swappedScore = scoreDecoded(swappedDecoded);
+
+        if (!bestSwap || swappedScore > bestSwap.score) {
+          bestSwap = {
+            charA,
+            charB,
+            score: swappedScore,
+            decoded: swappedDecoded,
+          };
+        }
+
+        mapping[charB] = mapping[charA];
+        mapping[charA] = tmp;
+      }
+    }
+
+    if (!bestSwap || bestSwap.score <= currentScore) break;
+
+    const tmp = mapping[bestSwap.charA];
+    mapping[bestSwap.charA] = mapping[bestSwap.charB];
+    mapping[bestSwap.charB] = tmp;
+    decoded = bestSwap.decoded;
+    currentScore = bestSwap.score;
+  }
+
+  return {
+    mapping,
+    decoded,
+    score: currentScore,
+  };
+}
+
 /**
  * Generator that solves Caesar and Substitution ciphers.
  *
@@ -590,23 +781,32 @@ function* createSolverIterator(ciphertext) {
   const cipherChars = Object.keys(counts)
     .sort((a, b) => counts[b] - counts[a])
     .slice(0, LETTERS_BY_FREQ.length);
-  const ITERS_PER_ROUND = 10000;
-  const NUM_ROUNDS = 10;
-  const MAX_NO_IMPROVE = 3000;
+  const ITERS_PER_ROUND = 12000;
+  const NUM_ROUNDS = 24;
+  const MAX_NO_IMPROVE = 4500;
   const T_START = 20;
   const T_MIN = 0.01;
 
+  const initialMapping = { ...mapping };
   let bestScore = currentScore;
   let bestMapping = { ...mapping };
   let bestDecoded = decoded;
   let globalIteration = 0;
 
   for (let round = 0; round < NUM_ROUNDS; round++) {
-    // Stochastic restart: start from best mapping with a few random shuffles
+    // Stochastic restarts: most rounds refine around the best-known mapping,
+    // while some rounds jump back toward the original frequency guess to
+    // explore very different regions of the search space.
     if (round > 0) {
-      // Copy the best mapping, then perturb it
-      for (const ch of cipherChars) mapping[ch] = bestMapping[ch];
-      const numShuffles = 3 + Math.floor(Math.random() * 5);
+      const broadRestart = round % 4 === 0;
+      const sourceMapping = broadRestart ? initialMapping : bestMapping;
+
+      for (const ch of cipherChars) mapping[ch] = sourceMapping[ch];
+
+      const numShuffles = broadRestart
+        ? 8 + Math.floor(Math.random() * 8)
+        : 4 + Math.floor(Math.random() * 6);
+
       for (let s = 0; s < numShuffles; s++) {
         const a = cipherChars[Math.floor(Math.random() * cipherChars.length)];
         const b = cipherChars[Math.floor(Math.random() * cipherChars.length)];
@@ -674,6 +874,13 @@ function* createSolverIterator(ciphertext) {
         iteration: globalIteration,
       };
     }
+  }
+
+  const polished = runGreedyPolish(ciphertext, bestMapping, cipherChars, scoreDecoded);
+  if (polished.score > bestScore) {
+    bestMapping = polished.mapping;
+    bestDecoded = polished.decoded;
+    bestScore = polished.score;
   }
 
   // Restore best mapping found across all rounds

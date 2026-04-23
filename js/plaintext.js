@@ -11,8 +11,25 @@ const PLAINTEXTS = [
   "IN THE BEGINNING GOD CREATED THE HEAVEN AND THE EARTH AND THE EARTH WAS WITHOUT FORM AND VOID AND DARKNESS WAS UPON THE FACE",
 ];
 
+const MAX_TEXT_LENGTH = 256;
+
 export function randomPlaintext() {
-  const text = PLAINTEXTS[Math.floor(Math.random() * PLAINTEXTS.length)];
-  // Repeat the text to fill the 256-char matrix
-  return (text + " ").repeat(Math.ceil(256 / (text.length + 1))).slice(0, 256);
+  const pool = [...PLAINTEXTS];
+  const parts = [];
+
+  while (pool.length > 0 && parts.join(" ").length < MAX_TEXT_LENGTH) {
+    const index = Math.floor(Math.random() * pool.length);
+    parts.push(pool.splice(index, 1)[0]);
+  }
+
+  if (parts.length === 0) return "";
+
+  let mixed = parts.join(" ");
+
+  while (mixed.length < MAX_TEXT_LENGTH) {
+    const next = PLAINTEXTS[Math.floor(Math.random() * PLAINTEXTS.length)];
+    mixed += " " + next;
+  }
+
+  return mixed.slice(0, MAX_TEXT_LENGTH);
 }

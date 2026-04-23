@@ -1,5 +1,7 @@
 import { renderHistogram } from "./histogram.js";
 
+const MAX_TEXT_LENGTH = 256;
+
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
     const cipherSelect = tab.querySelector(".cipher-select");
@@ -9,7 +11,7 @@ export function initCaesar(tab) {
     const freqChart = tab.querySelector(".frequency-chart");
 
     let lastEncrypted = null;
-    let currentDisplayedText = inputText.value;
+    let currentDisplayedText = inputText.value.slice(0, MAX_TEXT_LENGTH);
     let showingCiphertext = false;
     let revealFrameId = null;
     let revealRunId = 0;
@@ -45,29 +47,42 @@ export function initCaesar(tab) {
         return cipherSelect?.value ?? "caesar";
     }
 
+    function clampText(text) {
+        return (text ?? "").slice(0, MAX_TEXT_LENGTH);
+    }
+
+    function syncInputText() {
+        const clamped = clampText(inputText.value);
+        if (inputText.value !== clamped) {
+            inputText.value = clamped;
+        }
+        return clamped;
+    }
+
     function normalizeSubstitutionKey(key) {
-        const upper = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
-        if (upper.length !== 26) return null;
+        const normalized = (key ?? "").slice(0, PRINTABLE_RANGE);
+        if (normalized.length !== PRINTABLE_RANGE) return null;
 
-        const uniqueChars = new Set(upper);
-        if (uniqueChars.size !== 26) return null;
+        const uniqueChars = new Set(normalized);
+        if (uniqueChars.size !== PRINTABLE_RANGE) return null;
 
-        return upper;
+        for (const ch of normalized) {
+            const code = ch.charCodeAt(0);
+            if (code < PRINTABLE_START || code > PRINTABLE_END) return null;
+        }
+
+        return normalized;
     }
 
     function substitutionEncrypt(text, key) {
         const normalizedKey = normalizeSubstitutionKey(key);
-        if (!normalizedKey) return text;
+        const sourceText = clampText(text);
+        if (!normalizedKey) return sourceText;
 
-        return text.slice(0, 256).split("").map((char) => {
+        return sourceText.split("").map((char) => {
             const code = char.charCodeAt(0);
-
-            if (code >= 65 && code <= 90) {
-                return normalizedKey[code - 65];
-            }
-
-            if (code >= 97 && code <= 122) {
-                return normalizedKey[code - 97].toLowerCase();
+            if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
+                return normalizedKey[code - PRINTABLE_START];
             }
 
             return char;
@@ -76,11 +91,12 @@ export function initCaesar(tab) {
 
     function vigenereEncrypt(text, key) {
         const normalizedKey = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
-        if (!normalizedKey) return text;
+        const sourceText = clampText(text);
+        if (!normalizedKey) return sourceText;
 
         let keyIndex = 0;
 
-        return text.slice(0, 256).split("").map((char) => {
+        return sourceText.split("").map((char) => {
             const code = char.charCodeAt(0);
 
             if (code < 65 || code > 90) {
@@ -94,30 +110,32 @@ export function initCaesar(tab) {
     }
 
     function getCiphertext() {
+        const sourceText = syncInputText();
         switch (currentCipherType()) {
             case "substitution":
-                return substitutionEncrypt(inputText.value, keyInput.value);
+                return substitutionEncrypt(sourceText, keyInput.value);
             case "vigenere":
-                return vigenereEncrypt(inputText.value, keyInput.value);
+                return vigenereEncrypt(sourceText, keyInput.value);
             case "caesar":
             default:
-                return caesarShift(inputText.value, currentShift());
+                return caesarShift(sourceText, currentShift());
         }
     }
 
     function updateGrid(text, { animate = true } = {}) {
+        const nextText = clampText(text);
         stopReveal();
-        ensureGrid(text);
-        renderHistogram(text, freqChart);
-        currentDisplayedText = text;
+        ensureGrid(nextText);
+        renderHistogram(nextText, freqChart);
+        currentDisplayedText = nextText;
 
         if (!animate) {
-            setGridText(text);
+            setGridText(nextText);
             return;
         }
 
         const runId = revealRunId;
-        scrambleReveal(text, gridContainer, {
+        scrambleReveal(nextText, gridContainer, {
             isActive: () => runId === revealRunId,
             setFrameId: (frameId) => {
                 revealFrameId = frameId;
@@ -126,14 +144,15 @@ export function initCaesar(tab) {
     }
 
     function showPlaintext(options = {}) {
+        const plaintext = syncInputText();
         lastEncrypted = null;
         showingCiphertext = false;
-        updateGrid(inputText.value, options);
+        updateGrid(plaintext, options);
     }
 
     function showCiphertext(options = {}) {
         const ciphertext = getCiphertext();
-        const encryptionKey = currentCipherType() + "|" + inputText.value + "|" + keyInput.value;
+        const encryptionKey = currentCipherType() + "|" + syncInputText() + "|" + keyInput.value;
 
         if (
             !options.force &&
@@ -150,6 +169,7 @@ export function initCaesar(tab) {
         return ciphertext;
     }
 
+    inputText.maxLength = MAX_TEXT_LENGTH;
     inputText.addEventListener("input", () => showPlaintext());
     cipherSelect?.addEventListener("input", () => showPlaintext());
 
@@ -176,7 +196,7 @@ export const PRINTABLE_RANGE = PRINTABLE_END - PRINTABLE_START + 1; // 95
 export function caesarShift(text, shift) {
     shift = ((shift % PRINTABLE_RANGE) + PRINTABLE_RANGE) % PRINTABLE_RANGE;
 
-    return text.slice(0, 256).split("").map(char => {
+    return (text ?? "").slice(0, MAX_TEXT_LENGTH).split("").map(char => {
         const code = char.charCodeAt(0);
 
         if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
@@ -303,3 +323,14 @@ function scrambleReveal(finalText, container, controls = {}) {
 
     setFrameId(requestAnimationFrame(tick));
 }
+    function clampText(text) {
+        return (text ?? "").slice(0, MAX_TEXT_LENGTH);
+    }
+
+    function syncInputText() {
+        const clamped = clampText(inputText.value);
+        if (inputText.value !== clamped) {
+            inputText.value = clamped;
+        }
+        return clamped;
+    }
