@@ -2,6 +2,7 @@ import { renderHistogram } from "./histogram.js";
 
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
+    const cipherSelect = tab.querySelector(".cipher-select");
     const gridContainer = tab.querySelector(".text-grid");
     const encryptBtn = tab.querySelector(".encrypt-btn");
     const keyInput = tab.querySelector(".key-input");
@@ -9,40 +10,162 @@ export function initCaesar(tab) {
 
     let lastEncrypted = null;
     let currentDisplayedText = inputText.value;
+    let showingCiphertext = false;
+    let revealFrameId = null;
+    let revealRunId = 0;
 
-    function updateGrid(text) {
-        // Ensure correct number of cells exist
+    function ensureGrid(text) {
         const currentCells = gridContainer.querySelectorAll(".cell");
         if (currentCells.length !== text.length) {
             renderGrid(text, gridContainer);
         }
+    }
 
+    function setGridText(text) {
+        const spans = gridContainer.querySelectorAll(".cell");
+        for (let i = 0; i < spans.length; i++) {
+            spans[i].textContent = text[i] ?? "";
+        }
+    }
+
+    function stopReveal() {
+        revealRunId++;
+        if (revealFrameId !== null) {
+            cancelAnimationFrame(revealFrameId);
+            revealFrameId = null;
+        }
+    }
+
+    function currentShift() {
+        const parsed = Number.parseInt(keyInput.value, 10);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+
+    function currentCipherType() {
+        return cipherSelect?.value ?? "caesar";
+    }
+
+    function normalizeSubstitutionKey(key) {
+        const upper = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
+        if (upper.length !== 26) return null;
+
+        const uniqueChars = new Set(upper);
+        if (uniqueChars.size !== 26) return null;
+
+        return upper;
+    }
+
+    function substitutionEncrypt(text, key) {
+        const normalizedKey = normalizeSubstitutionKey(key);
+        if (!normalizedKey) return text;
+
+        return text.slice(0, 256).split("").map((char) => {
+            const code = char.charCodeAt(0);
+
+            if (code >= 65 && code <= 90) {
+                return normalizedKey[code - 65];
+            }
+
+            if (code >= 97 && code <= 122) {
+                return normalizedKey[code - 97].toLowerCase();
+            }
+
+            return char;
+        }).join("");
+    }
+
+    function vigenereEncrypt(text, key) {
+        const normalizedKey = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
+        if (!normalizedKey) return text;
+
+        let keyIndex = 0;
+
+        return text.slice(0, 256).split("").map((char) => {
+            const code = char.charCodeAt(0);
+
+            if (code < 65 || code > 90) {
+                return char;
+            }
+
+            const shift = normalizedKey.charCodeAt(keyIndex % normalizedKey.length) - 65;
+            keyIndex++;
+            return String.fromCharCode(((code - 65 + shift) % 26) + 65);
+        }).join("");
+    }
+
+    function getCiphertext() {
+        switch (currentCipherType()) {
+            case "substitution":
+                return substitutionEncrypt(inputText.value, keyInput.value);
+            case "vigenere":
+                return vigenereEncrypt(inputText.value, keyInput.value);
+            case "caesar":
+            default:
+                return caesarShift(inputText.value, currentShift());
+        }
+    }
+
+    function updateGrid(text, { animate = true } = {}) {
+        stopReveal();
+        ensureGrid(text);
         renderHistogram(text, freqChart);
-        scrambleReveal(text, gridContainer);
         currentDisplayedText = text;
+
+        if (!animate) {
+            setGridText(text);
+            return;
+        }
+
+        const runId = revealRunId;
+        scrambleReveal(text, gridContainer, {
+            isActive: () => runId === revealRunId,
+            setFrameId: (frameId) => {
+                revealFrameId = frameId;
+            },
+        });
     }
 
-    function showPlaintext() {
+    function showPlaintext(options = {}) {
         lastEncrypted = null;
-        updateGrid(inputText.value);
+        showingCiphertext = false;
+        updateGrid(inputText.value, options);
     }
 
-    inputText.addEventListener("input", showPlaintext);
+    function showCiphertext(options = {}) {
+        const ciphertext = getCiphertext();
+        const encryptionKey = currentCipherType() + "|" + inputText.value + "|" + keyInput.value;
+
+        if (
+            !options.force &&
+            showingCiphertext &&
+            encryptionKey === lastEncrypted &&
+            currentDisplayedText === ciphertext
+        ) {
+            return ciphertext;
+        }
+
+        lastEncrypted = encryptionKey;
+        showingCiphertext = true;
+        updateGrid(ciphertext, options);
+        return ciphertext;
+    }
+
+    inputText.addEventListener("input", () => showPlaintext());
+    cipherSelect?.addEventListener("input", () => showPlaintext());
 
     encryptBtn.addEventListener("click", () => {
-        const shift = parseInt(keyInput.value) || 0;
-        if (shift === 0) return;
-
-        const key = inputText.value + "|" + shift;
-        if (key === lastEncrypted) return;
-        lastEncrypted = key;
-
-        updateGrid(caesarShift(inputText.value, shift));
+        showCiphertext();
     });
 
     showPlaintext();
 
     tab._getCurrentText = () => currentDisplayedText;
+    tab._getCiphertext = getCiphertext;
+    tab._showCiphertext = showCiphertext;
+    tab._stopGridAnimation = () => {
+        stopReveal();
+        setGridText(currentDisplayedText);
+    };
     tab._getGridContainer = () => gridContainer;
 }
 
@@ -85,7 +208,9 @@ function randomPrintableChar() {
  * Scramble-reveal animation that spreads from multiple random seed points.
  * Each cell flips through a few random characters before landing on its final value.
  */
-function scrambleReveal(finalText, container) {
+function scrambleReveal(finalText, container, controls = {}) {
+    const isActive = controls.isActive ?? (() => true);
+    const setFrameId = controls.setFrameId ?? (() => {});
     const cols = 16;
     const spans = container.querySelectorAll(".cell");
 
@@ -139,6 +264,8 @@ function scrambleReveal(finalText, container) {
     let lastFlipTime = t0;
 
     function tick(now) {
+        if (!isActive()) return;
+
         const elapsed = now - t0;
         const shouldFlip = now - lastFlipTime >= flipInterval;
         if (shouldFlip) lastFlipTime = now;
@@ -168,9 +295,11 @@ function scrambleReveal(finalText, container) {
         }
 
         if (!allDone) {
-            requestAnimationFrame(tick);
+            setFrameId(requestAnimationFrame(tick));
+        } else {
+            setFrameId(null);
         }
     }
 
-    requestAnimationFrame(tick);
+    setFrameId(requestAnimationFrame(tick));
 }

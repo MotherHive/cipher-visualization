@@ -19,6 +19,8 @@ export function initAttackPanel(panel) {
   let cipherCells = {};   // char -> DOM element in cipher row
   let plainCells = {};    // char -> DOM element in plain row
   let scoreHistory = [];
+  let currentPhase = "IDLE";
+  const MAX_SCORE_POINTS = 240;
 
   // --- Mapping table ---
 
@@ -66,9 +68,9 @@ export function initAttackPanel(panel) {
       } else if (swappedPair && (ch === swappedPair[0] || ch === swappedPair[1])) {
         pCell.dataset.state = "swapping";
         pCell.addEventListener("animationend", () => {
-          pCell.dataset.state = accepted ? "locked" : "tentative";
+          pCell.dataset.state = "tentative";
         }, { once: true });
-      } else if (pCell.dataset.state !== "locked") {
+      } else {
         pCell.dataset.state = "tentative";
       }
     }
@@ -78,18 +80,24 @@ export function initAttackPanel(panel) {
 
   function drawSparkline() {
     const ctx = scoreCanvas.getContext("2d");
-    const rect = scoreCanvas.getBoundingClientRect();
-    scoreCanvas.width = rect.width * devicePixelRatio;
-    scoreCanvas.height = rect.height * devicePixelRatio;
-    ctx.scale(devicePixelRatio, devicePixelRatio);
+    if (!ctx) return;
 
-    const w = rect.width;
-    const h = rect.height;
+    const rect = scoreCanvas.getBoundingClientRect();
+    const w = Math.max(rect.width, scoreCanvas.clientWidth, scoreCanvas.offsetWidth, 1);
+    const h = Math.max(rect.height, scoreCanvas.clientHeight, scoreCanvas.offsetHeight, 1);
+    const scale = window.devicePixelRatio || 1;
+
+    scoreCanvas.width = Math.max(1, Math.round(w * scale));
+    scoreCanvas.height = Math.max(1, Math.round(h * scale));
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(scale, scale);
+
     ctx.clearRect(0, 0, w, h);
 
-    if (scoreHistory.length < 2) return;
+    const history = scoreHistory.slice(-MAX_SCORE_POINTS);
+    if (history.length < 2) return;
 
-    const scores = scoreHistory.map(s => s.score);
+    const scores = history.map((s) => s.score);
     const min = Math.min(...scores);
     const max = Math.max(...scores);
     const range = max - min || 1;
@@ -101,9 +109,9 @@ export function initAttackPanel(panel) {
     ctx.shadowColor = "#00e87a40";
     ctx.shadowBlur = 4;
 
-    const xStep = w / Math.max(scoreHistory.length - 1, 1);
+    const xStep = w / Math.max(history.length - 1, 1);
 
-    for (let i = 0; i < scoreHistory.length; i++) {
+    for (let i = 0; i < history.length; i++) {
       const x = i * xStep;
       const y = h - ((scores[i] - min) / range) * (h - 8) - 4;
       if (i === 0) ctx.moveTo(x, y);
@@ -114,8 +122,8 @@ export function initAttackPanel(panel) {
 
     // Red dots for rejected swaps
     ctx.fillStyle = "#ff4d4d";
-    for (let i = 0; i < scoreHistory.length; i++) {
-      if (scoreHistory[i].accepted === false) {
+    for (let i = 0; i < history.length; i++) {
+      if (history[i].accepted === false) {
         const x = i * xStep;
         const y = h - ((scores[i] - min) / range) * (h - 8) - 4;
         ctx.beginPath();
@@ -153,6 +161,7 @@ export function initAttackPanel(panel) {
   // --- State machine ---
 
   function setState(state) {
+    currentPhase = state;
     stateLabel.textContent = state;
   }
 
@@ -168,6 +177,9 @@ export function initAttackPanel(panel) {
     updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
 
     scoreHistory.push({ score: data.score, accepted: data.accepted });
+    if (scoreHistory.length > MAX_SCORE_POINTS * 2) {
+      scoreHistory = scoreHistory.slice(-MAX_SCORE_POINTS);
+    }
     scoreValue.textContent = Math.round(data.score);
     drawSparkline();
 
@@ -185,17 +197,24 @@ export function initAttackPanel(panel) {
 
   // --- Controls ---
 
-  const STEP_INTERVAL = 50; // ms between auto-steps
-  let lastStepTime = 0;
+  const STEPS_PER_FRAME = 100; // batch solver refinement steps per animation frame
 
-  function autoStep(now) {
+  function autoStep() {
     if (!playing || !iterator) return;
 
-    if (now - lastStepTime >= STEP_INTERVAL) {
-      lastStepTime = now;
+    const stepsThisFrame = currentPhase === "REFINING" ? STEPS_PER_FRAME : 1;
+
+    // Run multiple solver steps per frame, only render the last one
+    let lastStep = null;
+    for (let i = 0; i < stepsThisFrame; i++) {
       const step = iterator.next();
-      processStep(step);
-      if (step.done || step.value?.phase === "SOLVED") return;
+      lastStep = step;
+      if (step.done || step.value?.phase === "SOLVED") break;
+    }
+
+    if (lastStep) {
+      processStep(lastStep);
+      if (lastStep.done || lastStep.value?.phase === "SOLVED") return;
     }
 
     animFrameId = requestAnimationFrame(autoStep);
@@ -205,7 +224,6 @@ export function initAttackPanel(panel) {
     playing = true;
     playBtn.innerHTML = "&#9208;"; // pause icon
     stepBtn.disabled = true;
-    lastStepTime = performance.now();
     animFrameId = requestAnimationFrame(autoStep);
   }
 
@@ -233,6 +251,7 @@ export function initAttackPanel(panel) {
     playing = false;
     iterator = null;
     scoreHistory = [];
+    currentPhase = "IDLE";
     playBtn.innerHTML = "&#9654;";
     playBtn.disabled = false;
     stepBtn.disabled = true;
@@ -269,6 +288,7 @@ export function initAttackPanel(panel) {
 
   return {
     startSolve(ciphertext) {
+      panel._stopGridAnimation?.();
       reset();
       attackPanel.hidden = false;
       buildMappingTable(ciphertext);

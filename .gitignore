@@ -1,2 +1,5 @@
 .DS_Store
 Thumbs.db
+.codex
+docs/solver.md
+docs/website.md

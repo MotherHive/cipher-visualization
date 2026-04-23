@@ -1,19 +1,26 @@
 # Cryptography Presentation Site — Layout Plan
 
 ## Overview
-Single-tab layout. Interactive tool for encrypting text and visually demonstrating
-automatic classical cipher decryption. Designed for presentation use — the solve
-process is animated and self-running.
+Single-tab layout ("Crypto-solver"). Interactive tool for encrypting text and
+visually demonstrating automatic classical cipher decryption. Designed for
+presentation use — the solve process is animated and self-running. Tab navigation
+system is retained for potential future expansion.
 
 ---
 
-## 1. Top Section — Settings & Key
+## 1. Top Section — Settings & Key ✅
 
-- **Cipher Type** — dropdown selector
+- **Cipher Type** — dropdown selector ✅
   - Options: Caesar, Substitution, Vigenère
-- **Key Input** — text field for manual key entry
-- **Randomize Key** — button with dice icon (🎲) that generates a valid random key
-  for the selected cipher type
+- **Key Input** — text field for manual key entry ✅
+  - Dice icon (🎲) inside the field generates a valid random key ✅
+  - Random key generated on page load ✅
+- **Plaintext Input** — textarea in the settings bar ✅
+  - Dice icon (🎲) generates random literary quotes (Shakespeare, Dickens, etc.) ✅
+  - Quotes repeat to fill 256 characters ✅
+  - Random quote loaded on page load ✅
+  - Randomization guaranteed to produce a different value each click ✅
+- Cipher type and key are stacked vertically; plaintext fills remaining width ✅
 
 ---
 
@@ -23,26 +30,35 @@ process is animated and self-running.
 - **Highlight Repeats** — toggle; highlights repeated characters in the matrix
 - **Show Bigrams** — toggle; overlays bigram pair highlighting
 
-### Matrix
-- 16×16 grid (256 characters total, fixed)
-- All messages padded to 256 characters — matrix is always full
-- Full ASCII character set supported, including spaces
-- Spaces are treated as meaningful cipher characters, not stripped
+### Matrix ✅
+- 16×16 grid (256 characters total, fixed) ✅
+- All messages padded to 256 characters — matrix is always full ✅
+- Printable ASCII character set (32–126, 95 chars) ✅
+- Spaces are treated as meaningful cipher characters, not stripped ✅
+- Scramble animation on text changes — cells flip through random characters ✅
+  - Multiple random seed points spread across grid ✅
+  - Ripples outward from seeds with staggered timing ✅
+  - Triggers on encrypt, plaintext edits, and randomization ✅
 - During auto-solve: cells animate in at a fixed pace as mappings commit
   - Confident mappings reveal first; uncertain ones fill in last
   - Unsolved cells shown as dimmed placeholder
 
-### Actions
-- **Encrypt Button** — runs the selected cipher on the matrix text
+### Actions ✅
+- **Encrypt Button** — runs the selected cipher on the matrix text ✅
+  - Guards against no-op (shift of 0 or same text+key combo) ✅
 - **Solve Button** — triggers the fully automatic animated decryption sequence
+  - (UI present, logic not yet implemented)
 
 ---
 
-## 3. Right Lower Half — Analysis Panel
+## 3. Right Lower Half — Analysis Panel ✅
 
-- **Frequency Histogram** — bar chart of character frequencies in the ciphertext
-  - Full ASCII frequency range (not just A–Z)
-  - During auto-solve: bars animate as letter mappings shift and lock in
+- **Frequency Histogram** — bar chart of character frequencies in the ciphertext ✅
+  - Printable ASCII frequency range (32–126) ✅
+  - Bars sorted by frequency, highest first ✅
+  - Animated "counting" effect — bars grow as characters are scanned ✅
+  - Smooth CSS transitions on bar width changes ✅
+  - Histogram animates simultaneously with grid scramble ✅
 - **English Distribution Overlay** — overlays expected English character frequencies
   for visual comparison (including space as most frequent character)
 - **Bigram Score** — numeric score comparing ciphertext bigrams against standard
@@ -120,8 +136,13 @@ Two modes, selectable via radio buttons. Both run automatically on solve.
 
 - [x] Animation speed — fixed pace regardless of text length
 - [x] Matrix always 16×16 (256 chars); messages padded to fill
-- [x] Full ASCII scope — spaces are cipher characters, not stripped
+- [x] Printable ASCII scope (32–126) — spaces are cipher characters, not stripped
 - [x] Solve failure — displays "Could not solve." and freezes state
+- [x] Caesar operates over printable ASCII (95 chars) not just A–Z
+- [x] Settings bar layout — controls stacked left, plaintext fills right
+- [x] Dice icons inline in input fields (not standalone buttons)
+- [x] Scramble animation uses multiple random seed points
+- [x] Histogram uses counting animation, not instant fill
 
 ## Open Questions / TBD
 

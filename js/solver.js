@@ -77,137 +77,170 @@ const ENGLISH_FREQ_ORDER = Array.from(
 export { ENGLISH_FREQ_ORDER };
 
 // ---------------------------------------------------------------------------
-// Step 2: Bigram scoring
+// Step 2: N-gram scoring
 // ---------------------------------------------------------------------------
 
-// Log10 probabilities for common English bigrams.
-// Values derived from typical English bigram frequency tables.
-const COMMON_BIGRAMS = {
-  // Space-prefixed (word starters)
-  ' t': -1.35,
-  ' a': -1.40,
-  ' o': -1.55,
-  ' s': -1.58,
-  ' i': -1.60,
-  ' h': -1.62,
-  ' w': -1.65,
-  ' b': -1.70,
-  ' c': -1.75,
-  ' f': -1.78,
-  ' m': -1.80,
-  ' p': -1.85,
-  ' d': -1.88,
-  ' n': -1.92,
-  ' r': -1.95,
-  ' l': -2.00,
-  ' e': -2.10,
-  ' g': -2.20,
-  ' y': -2.25,
-  ' u': -2.30,
-  // Space-suffixed (word enders)
-  'e ': -1.30,
-  't ': -1.45,
-  's ': -1.50,
-  'd ': -1.55,
-  'n ': -1.60,
-  'r ': -1.65,
-  'y ': -1.70,
-  'f ': -1.80,
-  'g ': -1.85,
-  'h ': -1.90,
-  'l ': -1.95,
-  'k ': -2.00,
-  // Common letter pairs
-  'th': -1.20,
-  'he': -1.25,
-  'in': -1.38,
-  'er': -1.42,
-  'an': -1.48,
-  're': -1.52,
-  'on': -1.56,
-  'en': -1.60,
-  'at': -1.63,
-  'nd': -1.65,
-  'st': -1.68,
-  'es': -1.70,
-  'ed': -1.72,
-  'is': -1.74,
-  'it': -1.76,
-  'ng': -1.78,
-  'ha': -1.80,
-  'ou': -1.82,
-  'or': -1.84,
-  'ea': -1.86,
-  'ti': -1.88,
-  'to': -1.90,
-  'io': -1.92,
-  'le': -1.94,
-  'al': -1.96,
-  've': -1.98,
-  'hi': -2.00,
-  'ri': -2.02,
-  'ro': -2.04,
-  'li': -2.06,
-  'nt': -2.08,
-  'te': -2.10,
-  'as': -2.12,
-  'ar': -2.14,
-  'om': -2.16,
-  'me': -2.18,
-  'de': -2.20,
-  'se': -2.22,
-  'la': -2.24,
-  'si': -2.26,
-  'ne': -2.28,
-  'no': -2.30,
-  'be': -2.32,
-  'co': -2.34,
-  'ma': -2.36,
-  'di': -2.38,
-  'fo': -2.40,
-  'ra': -2.42,
-  'ac': -2.44,
-  'wi': -2.46,
-  'il': -2.48,
-  'wa': -2.50,
+const GENERATED_NGRAM_MODULE_PATH = "./generated-ngram-data.js";
+const NGRAM_WEIGHTS = new Map([
+  [1, 0.02],
+  [2, 0.06],
+  [3, 0.12],
+  [4, 0.35],
+  [5, 0.45],
+]);
+
+let scoringModel = null;
+let scoringModelPromise = null;
+
+// Lightweight fallback so the solver still works if the generated data module
+// is missing. The first real Solve click upgrades this to the full 1–5 gram
+// model built from gram_data/.
+const FALLBACK_QUADGRAM_LOG = {
+  that: -2.50, ther: -2.55, with: -2.60, tion: -2.63,
+  here: -2.67, ould: -2.70, ight: -2.73, have: -2.76,
+  hich: -2.80, whic: -2.83, this: -2.86, thin: -2.89,
+  they: -2.92, atio: -2.95, ever: -2.98, from: -3.01,
+  ough: -3.04, were: -3.07, hing: -3.10, ment: -3.13,
+  ence: -3.16, ance: -3.19, them: -3.22, heir: -3.25,
+  been: -3.28, said: -3.31, each: -3.34, ting: -3.37,
+  ring: -3.40, ness: -3.43, some: -3.46, what: -3.49,
 };
 
-const BIGRAM_FLOOR = -6;
+const FALLBACK_MONOGRAM_MAP = new Map(
+  Object.entries(ENGLISH_FREQ_MAP)
+    .filter(([ch]) => ch >= "a" && ch <= "z")
+    .map(([ch, freq]) => [ch.toUpperCase(), Math.log10(freq)])
+);
 
-// Populate BIGRAM_LOG with lowercase, uppercase, and mixed-case variants.
-const BIGRAM_LOG = {};
+const FALLBACK_QUADGRAM_MAP = new Map(
+  Object.entries(FALLBACK_QUADGRAM_LOG).map(([gram, score]) => [gram.toUpperCase(), score])
+);
 
-for (const [bigram, logProb] of Object.entries(COMMON_BIGRAMS)) {
-  const lo = bigram.toLowerCase();
-  const up = bigram.toUpperCase();
-  const cap = bigram[0].toUpperCase() + bigram[1].toLowerCase();
-  const uncap = bigram[0].toLowerCase() + bigram[1].toUpperCase();
-
-  for (const variant of [lo, up, cap, uncap]) {
-    // Only set if not already present (prefer earlier/more specific entry).
-    if (!(variant in BIGRAM_LOG)) {
-      BIGRAM_LOG[variant] = logProb;
-    }
-  }
+function createFallbackScoringModel() {
+  return {
+    tables: [
+      { n: 1, weight: NGRAM_WEIGHTS.get(1), floor: Math.log10(FREQ_FLOOR), entries: FALLBACK_MONOGRAM_MAP },
+      { n: 4, weight: NGRAM_WEIGHTS.get(4), floor: -10, entries: FALLBACK_QUADGRAM_MAP },
+    ],
+  };
 }
 
-/**
- * Score text by summing log10-probabilities of all adjacent character pairs.
- * Higher (less negative) scores indicate more English-like text.
- *
- * @param {string} text
- * @returns {number}
- */
-function scoreBigrams(text) {
-  let score = 0;
-  for (let i = 0; i < text.length - 1; i++) {
-    const pair = text[i] + text[i + 1];
-    score += BIGRAM_LOG[pair] ?? BIGRAM_FLOOR;
+function hydrateScoringModel(tableSpecs, scoreScale = 1) {
+  return {
+    tables: tableSpecs
+      .map((table) => ({
+        n: table.n,
+        weight: table.weight ?? NGRAM_WEIGHTS.get(table.n) ?? 0,
+        floor: table.floor / scoreScale,
+        entries: new Map(
+          table.entries.map(([gram, score]) => [gram, score / scoreScale])
+        ),
+      }))
+      .sort((a, b) => a.n - b.n),
+  };
+}
+
+function getScoringModel() {
+  if (!scoringModel) {
+    scoringModel = createFallbackScoringModel();
   }
+  return scoringModel;
+}
+
+async function loadScoringData() {
+  if (scoringModelPromise) return scoringModelPromise;
+
+  scoringModelPromise = import(GENERATED_NGRAM_MODULE_PATH)
+    .then((mod) => {
+      const scoreScale = mod.GENERATED_NGRAM_SCORE_SCALE ?? 1;
+      scoringModel = hydrateScoringModel(mod.GENERATED_NGRAM_TABLES ?? [], scoreScale);
+      return scoringModel;
+    })
+    .catch(() => getScoringModel());
+
+  return scoringModelPromise;
+}
+
+function normalizeLetters(text) {
+  return text.toUpperCase().replace(/[^A-Z]/g, "");
+}
+
+function scoreGramWindows(letters, table) {
+  const windowCount = letters.length - table.n + 1;
+  if (windowCount <= 0) return null;
+
+  let total = 0;
+  for (let i = 0; i < windowCount; i++) {
+    const gram = letters.slice(i, i + table.n);
+    total += table.entries.get(gram) ?? table.floor;
+  }
+  return total / windowCount;
+}
+
+function scoreWordStructure(text) {
+  const words = text.toLowerCase().split(/[^a-z]+/).filter((word) => word.length > 0);
+  let score = 0;
+
+  for (const word of words) {
+    if (COMMON_WORDS.has(word)) score += 3;
+    if (word.length >= 2 && word.length <= 8) score += 0.15;
+    else if (word.length > 15) score -= 0.3;
+  }
+
   return score;
 }
 
-export { scoreBigrams };
+function scoreTextWithModel(text, model) {
+  const letters = normalizeLetters(text);
+  if (letters.length === 0) return -Infinity;
+
+  let weightedScore = 0;
+  let totalWeight = 0;
+
+  for (const table of model.tables) {
+    const score = scoreGramWindows(letters, table);
+    if (score === null) continue;
+    weightedScore += score * table.weight;
+    totalWeight += table.weight;
+  }
+
+  if (totalWeight === 0) return -Infinity;
+
+  // Scale back up by text length so the score still has a clear gradient.
+  return (weightedScore / totalWeight) * letters.length + scoreWordStructure(text);
+}
+
+function scoreText(text) {
+  return scoreTextWithModel(text, getScoringModel());
+}
+
+// Common short English words for Caesar detection.
+const COMMON_WORDS = new Set([
+  'the', 'and', 'that', 'have', 'for', 'not', 'with', 'you', 'this',
+  'but', 'his', 'from', 'they', 'been', 'one', 'had', 'was', 'her',
+  'are', 'all', 'were', 'when', 'will', 'can', 'said', 'there',
+  'each', 'which', 'their', 'time', 'she', 'them', 'some', 'would',
+  'make', 'like', 'him', 'into', 'has', 'two', 'more', 'very',
+  'what', 'know', 'just', 'than', 'who', 'its', 'over', 'also',
+]);
+
+/**
+ * Score text for Caesar detection by counting recognized English words.
+ * More robust than quadgrams for Caesar because it doesn't suffer from
+ * length-dependent scoring artifacts.
+ */
+function scoreCaesarCandidate(text) {
+  const words = text.toLowerCase().split(/[^a-z]+/).filter(w => w.length > 0);
+  let hits = 0;
+  for (const w of words) {
+    if (COMMON_WORDS.has(w)) hits++;
+  }
+  return hits;
+}
+
+const scoreQuadgrams = scoreText;
+
+export { loadScoringData, scoreText, scoreQuadgrams };
 
 // ---------------------------------------------------------------------------
 // Step 3: Mapping functions
@@ -230,10 +263,15 @@ function countFrequencies(text) {
   return counts;
 }
 
+// Letters + space sorted by English frequency (most frequent first).
+// These are the only characters that matter for substitution cipher solving.
+const LETTERS_BY_FREQ = ' etaoinsrhldcumfwgypbvk\'jxqz'.split('');
+
 /**
  * Build an initial cipher->plaintext mapping by matching cipher character
- * frequencies to English frequency order (most frequent cipher char maps to
- * most frequent English char, etc.).
+ * frequencies to English letter frequencies. Only maps characters that appear
+ * with meaningful frequency — rare punctuation and digits are mapped to
+ * themselves, keeping the hill climber focused on what matters.
  *
  * @param {string} ciphertext
  * @returns {Object.<string, string>} Map of cipherChar -> plainChar
@@ -246,11 +284,16 @@ function buildInitialMapping(ciphertext) {
     (a, b) => counts[b] - counts[a]
   );
 
+  // Only frequency-match the top N characters (where N = letters + space).
+  // The rest are noise — map them to themselves.
   const mapping = {};
-  for (let i = 0; i < cipherByFreq.length; i++) {
-    const cipherChar = cipherByFreq[i];
-    const plainChar  = ENGLISH_FREQ_ORDER[i] ?? cipherChar;
-    mapping[cipherChar] = plainChar;
+  const numToMap = Math.min(cipherByFreq.length, LETTERS_BY_FREQ.length);
+
+  for (let i = 0; i < numToMap; i++) {
+    mapping[cipherByFreq[i]] = LETTERS_BY_FREQ[i];
+  }
+  for (let i = numToMap; i < cipherByFreq.length; i++) {
+    mapping[cipherByFreq[i]] = cipherByFreq[i];
   }
   return mapping;
 }
@@ -373,30 +416,164 @@ function findEnglishSpans(text) {
 export { findEnglishSpans };
 
 // ---------------------------------------------------------------------------
-// Step 6: Hill climbing solver iterator
+// Step 6: Solver iterator
 // ---------------------------------------------------------------------------
 
+function decodeCaesarShift(ciphertext, shift) {
+  let decoded = '';
+  for (const ch of ciphertext) {
+    const code = ch.charCodeAt(0);
+    if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
+      decoded += String.fromCharCode(
+        ((code - PRINTABLE_START - shift + PRINTABLE_RANGE) % PRINTABLE_RANGE) + PRINTABLE_START
+      );
+    } else {
+      decoded += ch;
+    }
+  }
+  return decoded;
+}
+
 /**
- * Generator that performs hill-climbing substitution cipher solving.
- * Yields step-by-step state so the UI can animate each iteration.
+ * Try all 95 Caesar shifts. Returns the best shift, its score, and whether
+ * the best shift is statistically dominant (strong signal = likely Caesar).
+ */
+function findBestCaesarShift(ciphertext, scoreDecoded = scoreQuadgrams) {
+  let bestShift = 0;
+  let bestWordScore = -Infinity;
+  let bestQuadScore = -Infinity;
+  let bestDecoded = ciphertext;
+
+  for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
+    const decoded = decodeCaesarShift(ciphertext, shift);
+    const wordScore = scoreCaesarCandidate(decoded);
+    const quadScore = scoreDecoded(decoded);
+
+    if (
+      wordScore > bestWordScore ||
+      (wordScore === bestWordScore && quadScore > bestQuadScore)
+    ) {
+      bestShift = shift;
+      bestWordScore = wordScore;
+      bestQuadScore = quadScore;
+      bestDecoded = decoded;
+    }
+  }
+
+  // A true Caesar cipher will produce multiple recognized English words.
+  // Require at least 2 word hits for confidence.
+  const dominant = bestWordScore >= 2;
+
+  return {
+    shift: bestShift,
+    score: bestQuadScore,
+    dominant,
+    decoded: bestDecoded,
+  };
+}
+
+/**
+ * Build a mapping object from a Caesar shift value.
+ */
+function buildCaesarMapping(ciphertext, shift) {
+  const counts = countFrequencies(ciphertext);
+  const mapping = {};
+  for (const ch of Object.keys(counts)) {
+    const code = ch.charCodeAt(0);
+    mapping[ch] = String.fromCharCode(
+      ((code - PRINTABLE_START - shift + PRINTABLE_RANGE) % PRINTABLE_RANGE) + PRINTABLE_START
+    );
+  }
+  return mapping;
+}
+
+/**
+ * Generator that solves Caesar and Substitution ciphers.
  *
- * Yield phases:
- *   MAPPING  — initial frequency-based mapping (once, at start)
- *   REFINING — each hill-climbing swap attempt
- *   SOLVED   — final state after convergence or iteration limit
+ * Strategy:
+ *   1. Brute-force all 95 Caesar shifts, pick the best.
+ *   2. If one shift dominates all others, it's a Caesar cipher — yield SOLVED.
+ *   3. Otherwise, run simulated annealing with stochastic restarts.
  *
  * @param {string} ciphertext
- * @yields {{ phase: string, mapping: Object, score: number, decoded: string,
- *            accepted: boolean|null, swappedPair: [string,string]|null,
- *            iteration?: number, caesar?: boolean, shift?: number }}
  */
 function* createSolverIterator(ciphertext) {
-  // --- Step 1: Build initial mapping ---
+  // Snapshot the scoring tables once so a background model upgrade cannot
+  // change the solver's fitness landscape mid-run.
+  const scoringModel = getScoringModel();
+  const scoreDecoded = (text) => scoreTextWithModel(text, scoringModel);
+
+  // --- Step 1: Caesar brute force ---
+  let caesar = {
+    shift: 0,
+    score: -Infinity,
+    dominant: false,
+    decoded: ciphertext,
+  };
+
+  for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
+    const decodedCandidate = decodeCaesarShift(ciphertext, shift);
+    const wordScore = scoreCaesarCandidate(decodedCandidate);
+    const quadScore = scoreDecoded(decodedCandidate);
+    const isBetterCandidate =
+      wordScore > scoreCaesarCandidate(caesar.decoded) ||
+      (wordScore === scoreCaesarCandidate(caesar.decoded) && quadScore > caesar.score);
+
+    if (isBetterCandidate) {
+      caesar = {
+        shift,
+        score: quadScore,
+        dominant: wordScore >= 2,
+        decoded: decodedCandidate,
+      };
+    }
+
+    yield {
+      phase: 'ANALYZING',
+      mapping: buildCaesarMapping(ciphertext, shift),
+      score: quadScore,
+      decoded: decodedCandidate,
+      accepted: null,
+      swappedPair: null,
+      iteration: shift,
+      shift,
+      bestShift: caesar.shift,
+    };
+  }
+
+  caesar = findBestCaesarShift(ciphertext, scoreDecoded);
+  const caesarMapping = buildCaesarMapping(ciphertext, caesar.shift);
+  const caesarDecoded = caesar.decoded;
+
+  // --- Step 2: Frequency-based initial mapping ---
   const mapping = buildInitialMapping(ciphertext);
   let decoded = applyMapping(ciphertext, mapping);
-  let currentScore = scoreBigrams(decoded);
+  let currentScore = scoreDecoded(decoded);
 
-  // Yield initial MAPPING state.
+  // If one Caesar shift dominates all others, it's a Caesar cipher
+  if (caesar.dominant && caesar.shift !== 0) {
+    yield {
+      phase: 'MAPPING',
+      mapping: { ...caesarMapping },
+      score: caesar.score,
+      decoded: caesarDecoded,
+      accepted: null,
+      swappedPair: null,
+    };
+    yield {
+      phase: 'SOLVED',
+      mapping: { ...caesarMapping },
+      score: caesar.score,
+      decoded: caesarDecoded,
+      accepted: null,
+      swappedPair: null,
+      caesar: true,
+      shift: caesar.shift,
+    };
+    return;
+  }
+
+  // Yield initial mapping state
   yield {
     phase: 'MAPPING',
     mapping: { ...mapping },
@@ -406,81 +583,105 @@ function* createSolverIterator(ciphertext) {
     swappedPair: null,
   };
 
-  // --- Step 2: Caesar check ---
-  const shift = detectCaesar(mapping);
-  if (shift !== null) {
-    yield {
-      phase: 'SOLVED',
-      mapping: { ...mapping },
-      score: currentScore,
-      decoded,
-      accepted: null,
-      swappedPair: null,
-      caesar: true,
-      shift,
-    };
-    return;
-  }
+  // --- Step 3: Simulated annealing ---
+  // Only swap the most frequent cipher characters (letters + space territory).
+  // Rare punctuation/digits are noise — swapping them wastes iterations.
+  const counts = countFrequencies(ciphertext);
+  const cipherChars = Object.keys(counts)
+    .sort((a, b) => counts[b] - counts[a])
+    .slice(0, LETTERS_BY_FREQ.length);
+  const ITERS_PER_ROUND = 10000;
+  const NUM_ROUNDS = 10;
+  const MAX_NO_IMPROVE = 3000;
+  const T_START = 20;
+  const T_MIN = 0.01;
 
-  // --- Step 3: Hill climbing ---
-  const MAX_NO_IMPROVE = 500;
-  const MAX_ITERATIONS = 5000;
+  let bestScore = currentScore;
+  let bestMapping = { ...mapping };
+  let bestDecoded = decoded;
+  let globalIteration = 0;
 
-  const cipherChars = Object.keys(mapping);
-  let noImproveCount = 0;
-  let iteration = 0;
-
-  while (noImproveCount < MAX_NO_IMPROVE && iteration < MAX_ITERATIONS) {
-    iteration++;
-
-    // Pick two distinct random cipher characters.
-    const idxA = Math.floor(Math.random() * cipherChars.length);
-    let idxB = Math.floor(Math.random() * (cipherChars.length - 1));
-    if (idxB >= idxA) idxB++;
-
-    const charA = cipherChars[idxA];
-    const charB = cipherChars[idxB];
-
-    // Swap their plaintext mappings.
-    const tmp = mapping[charA];
-    mapping[charA] = mapping[charB];
-    mapping[charB] = tmp;
-
-    const newDecoded = applyMapping(ciphertext, mapping);
-    const newScore = scoreBigrams(newDecoded);
-
-    let accepted;
-    if (newScore >= currentScore) {
-      // Keep the swap.
-      currentScore = newScore;
-      decoded = newDecoded;
-      noImproveCount = 0;
-      accepted = true;
-    } else {
-      // Revert the swap.
-      mapping[charB] = mapping[charA];
-      mapping[charA] = tmp;
-      noImproveCount++;
-      accepted = false;
+  for (let round = 0; round < NUM_ROUNDS; round++) {
+    // Stochastic restart: start from best mapping with a few random shuffles
+    if (round > 0) {
+      // Copy the best mapping, then perturb it
+      for (const ch of cipherChars) mapping[ch] = bestMapping[ch];
+      const numShuffles = 3 + Math.floor(Math.random() * 5);
+      for (let s = 0; s < numShuffles; s++) {
+        const a = cipherChars[Math.floor(Math.random() * cipherChars.length)];
+        const b = cipherChars[Math.floor(Math.random() * cipherChars.length)];
+        if (a !== b) {
+          const t = mapping[a]; mapping[a] = mapping[b]; mapping[b] = t;
+        }
+      }
+      decoded = applyMapping(ciphertext, mapping);
+      currentScore = scoreDecoded(decoded);
     }
 
-    yield {
-      phase: 'REFINING',
-      mapping: { ...mapping },
-      score: currentScore,
-      decoded,
-      accepted,
-      swappedPair: [charA, charB],
-      iteration,
-    };
+    let noImproveCount = 0;
+
+    for (let i = 1; i <= ITERS_PER_ROUND; i++) {
+      if (noImproveCount >= MAX_NO_IMPROVE) break;
+      globalIteration++;
+
+      // Exponential cooling within this round
+      const temperature = T_START * Math.pow(T_MIN / T_START, i / ITERS_PER_ROUND);
+
+      // Pick two distinct random cipher characters
+      const idxA = Math.floor(Math.random() * cipherChars.length);
+      let idxB = Math.floor(Math.random() * (cipherChars.length - 1));
+      if (idxB >= idxA) idxB++;
+
+      const charA = cipherChars[idxA];
+      const charB = cipherChars[idxB];
+
+      // Swap their plaintext mappings
+      const tmp = mapping[charA];
+      mapping[charA] = mapping[charB];
+      mapping[charB] = tmp;
+
+      const newDecoded = applyMapping(ciphertext, mapping);
+      const newScore = scoreDecoded(newDecoded);
+      const delta = newScore - currentScore;
+
+      const accept = delta > 0 || Math.random() < Math.exp(delta / temperature);
+
+      if (accept) {
+        currentScore = newScore;
+        decoded = newDecoded;
+
+        if (currentScore > bestScore) {
+          bestScore = currentScore;
+          bestMapping = { ...mapping };
+          bestDecoded = decoded;
+          noImproveCount = 0;
+        } else {
+          noImproveCount++;
+        }
+      } else {
+        mapping[charB] = mapping[charA];
+        mapping[charA] = tmp;
+        noImproveCount++;
+      }
+
+      yield {
+        phase: 'REFINING',
+        mapping: { ...mapping },
+        score: currentScore,
+        decoded,
+        accepted: delta > 0,
+        swappedPair: [charA, charB],
+        iteration: globalIteration,
+      };
+    }
   }
 
-  // --- Step 4: Final SOLVED state ---
+  // Restore best mapping found across all rounds
   yield {
     phase: 'SOLVED',
-    mapping: { ...mapping },
-    score: currentScore,
-    decoded,
+    mapping: bestMapping,
+    score: bestScore,
+    decoded: bestDecoded,
     accepted: null,
     swappedPair: null,
     caesar: false,

@@ -2,6 +2,7 @@ import { initCaesar } from "./caesar.js";
 import { randomKey } from "./keys.js";
 import { randomPlaintext } from "./plaintext.js";
 import { initAttackPanel } from "./attack-panel.js";
+import { loadScoringData } from "./solver.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const panel = document.getElementById("crypto-solver");
@@ -11,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputText = panel.querySelector(".input-text");
   const randomTextBtn = panel.querySelector(".random-text-btn");
   const solveBtn = panel.querySelector(".solve-btn");
+  const encryptBtn = panel.querySelector(".encrypt-btn");
 
   randomizeBtn.addEventListener("click", () => {
     let key;
@@ -37,12 +39,31 @@ document.addEventListener("DOMContentLoaded", () => {
   initCaesar(panel);
 
   const attackPanel = initAttackPanel(panel);
+  void loadScoringData();
   inputText.addEventListener("input", () => attackPanel.reset());
-  panel.querySelector(".encrypt-btn").addEventListener("click", () => attackPanel.reset());
+  encryptBtn.addEventListener("click", () => attackPanel.reset());
+
+  function syncCipherControls() {
+    const solverSupported = cipherSelect.value !== "vigenere";
+    solveBtn.disabled = !solverSupported;
+    solveBtn.title = solverSupported ? "" : "Solver currently supports Caesar and substitution only.";
+    encryptBtn.title = solverSupported ? "" : "Encrypt still works for Vigenere, but Solve is disabled.";
+  }
+
+  cipherSelect.addEventListener("input", () => {
+    keyInput.value = randomKey(cipherSelect.value);
+    keyInput.dispatchEvent(new Event("input"));
+    attackPanel.reset();
+    syncCipherControls();
+  });
+
+  syncCipherControls();
 
   solveBtn.addEventListener("click", () => {
-    const currentText = panel._getCurrentText?.();
-    if (!currentText) return;
-    attackPanel.startSolve(currentText);
+    const ciphertext = panel._getCiphertext?.() ?? panel._getCurrentText?.();
+    if (!ciphertext) return;
+
+    panel._showCiphertext?.({ animate: false, force: true });
+    attackPanel.startSolve(ciphertext);
   });
 });
