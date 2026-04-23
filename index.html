@@ -24,25 +24,34 @@
         </header>
         
         <nav id="tab-nav" role="tablist">
-            <button role="tab" data-tab="intro"          class="tab-btn active">Intro</button>
-            <button role="tab" data-tab="caesar"         class="tab-btn">Caesar</button>
-            <button role="tab" data-tab="frequency"      class="tab-btn">Frequency</button>
-            <button role="tab" data-tab="transposition"  class="tab-btn">Transposition</button>
-            <button role="tab" data-tab="timing"         class="tab-btn">Timing Attack</button>
-            <button role="tab" data-tab="hash"           class="tab-btn">Hash Viz</button>
-            <button role="tab" data-tab="modern"         class="tab-btn">Modern Crypto</button>
+            <button role="tab" data-tab="crypto-solver" class="tab-btn active">Crypto-solver</button>
         </nav>
         
 
         <main id="content">
         
-            <!-- INTRO -->
-            <section id="intro" class="tab-panel active" role="tabpanel">
-            <!-- fill in -->
-            </section>
-        
-            <!-- CAESAR CIPHER + BRUTE FORCE -->
-            <section id="caesar" class="tab-panel" role="tabpanel">
+            <!-- CRYPTO-SOLVER -->
+            <section id="crypto-solver" class="tab-panel active" role="tabpanel">
+
+                <!-- Settings Bar -->
+                <div class="settings-bar">
+                    <label class="setting-group">
+                        <span class="setting-label">Cipher Type</span>
+                        <select class="cipher-select">
+                            <option value="caesar">Caesar</option>
+                            <option value="substitution">Substitution</option>
+                            <option value="vigenere">Vigenère</option>
+                        </select>
+                    </label>
+
+                    <label class="setting-group">
+                        <span class="setting-label">Key</span>
+                        <input type="text" class="key-input" placeholder="Enter key..." />
+                    </label>
+
+                    <button class="randomize-btn">Randomize</button>
+                </div>
+
                 <textarea class="input-text" rows="4" cols="60">HELLO WORLD</textarea>
 
                 <br><br>
@@ -55,32 +64,6 @@
                 <h3>Output:</h3>
                 <div class="output"></div>
 
-
-            </section>
-        
-            <!-- FREQUENCY ANALYSIS -->
-            <section id="frequency" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
-            </section>
-        
-            <!-- TRANSPOSITION GRID ATTACK -->
-            <section id="transposition" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
-            </section>
-        
-            <!-- TIMING ATTACK -->
-            <section id="timing" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
-            </section>
-        
-            <!-- HASH VISUALIZER -->
-            <section id="hash" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
-            </section>
-        
-            <!-- WHY MODERN CRYPTO WORKS -->
-            <section id="modern" class="tab-panel" role="tabpanel">
-            <!-- fill in -->
             </section>
 
         </main>

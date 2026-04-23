@@ -283,7 +283,70 @@ h6 { font-size: var(--text-base);}
 
 
 /* ============================================
-  7. Tab Elements
+  7. Settings Bar
+   ============================================ */
+
+.settings-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.setting-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cipher-select,
+.key-input {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+}
+
+.cipher-select:focus,
+.key-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.key-input {
+  width: 180px;
+}
+
+.randomize-btn {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--bg);
+  background: var(--accent);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  transition: opacity var(--transition-fast);
+}
+
+.randomize-btn:hover {
+  opacity: 0.85;
+}
+
+/* ============================================
+  8. Tab Elements
    ============================================ */
 /* General container styling */
 .shift-slider {
