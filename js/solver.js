@@ -371,3 +371,120 @@ function findEnglishSpans(text) {
 }
 
 export { findEnglishSpans };
+
+// ---------------------------------------------------------------------------
+// Step 6: Hill climbing solver iterator
+// ---------------------------------------------------------------------------
+
+/**
+ * Generator that performs hill-climbing substitution cipher solving.
+ * Yields step-by-step state so the UI can animate each iteration.
+ *
+ * Yield phases:
+ *   MAPPING  — initial frequency-based mapping (once, at start)
+ *   REFINING — each hill-climbing swap attempt
+ *   SOLVED   — final state after convergence or iteration limit
+ *
+ * @param {string} ciphertext
+ * @yields {{ phase: string, mapping: Object, score: number, decoded: string,
+ *            accepted: boolean|null, swappedPair: [string,string]|null,
+ *            iteration?: number, caesar?: boolean, shift?: number }}
+ */
+function* createSolverIterator(ciphertext) {
+  // --- Step 1: Build initial mapping ---
+  const mapping = buildInitialMapping(ciphertext);
+  let decoded = applyMapping(ciphertext, mapping);
+  let currentScore = scoreBigrams(decoded);
+
+  // Yield initial MAPPING state.
+  yield {
+    phase: 'MAPPING',
+    mapping: { ...mapping },
+    score: currentScore,
+    decoded,
+    accepted: null,
+    swappedPair: null,
+  };
+
+  // --- Step 2: Caesar check ---
+  const shift = detectCaesar(mapping);
+  if (shift !== null) {
+    yield {
+      phase: 'SOLVED',
+      mapping: { ...mapping },
+      score: currentScore,
+      decoded,
+      accepted: null,
+      swappedPair: null,
+      caesar: true,
+      shift,
+    };
+    return;
+  }
+
+  // --- Step 3: Hill climbing ---
+  const MAX_NO_IMPROVE = 500;
+  const MAX_ITERATIONS = 5000;
+
+  const cipherChars = Object.keys(mapping);
+  let noImproveCount = 0;
+  let iteration = 0;
+
+  while (noImproveCount < MAX_NO_IMPROVE && iteration < MAX_ITERATIONS) {
+    iteration++;
+
+    // Pick two distinct random cipher characters.
+    const idxA = Math.floor(Math.random() * cipherChars.length);
+    let idxB = Math.floor(Math.random() * (cipherChars.length - 1));
+    if (idxB >= idxA) idxB++;
+
+    const charA = cipherChars[idxA];
+    const charB = cipherChars[idxB];
+
+    // Swap their plaintext mappings.
+    const tmp = mapping[charA];
+    mapping[charA] = mapping[charB];
+    mapping[charB] = tmp;
+
+    const newDecoded = applyMapping(ciphertext, mapping);
+    const newScore = scoreBigrams(newDecoded);
+
+    let accepted;
+    if (newScore >= currentScore) {
+      // Keep the swap.
+      currentScore = newScore;
+      decoded = newDecoded;
+      noImproveCount = 0;
+      accepted = true;
+    } else {
+      // Revert the swap.
+      mapping[charB] = mapping[charA];
+      mapping[charA] = tmp;
+      noImproveCount++;
+      accepted = false;
+    }
+
+    yield {
+      phase: 'REFINING',
+      mapping: { ...mapping },
+      score: currentScore,
+      decoded,
+      accepted,
+      swappedPair: [charA, charB],
+      iteration,
+    };
+  }
+
+  // --- Step 4: Final SOLVED state ---
+  yield {
+    phase: 'SOLVED',
+    mapping: { ...mapping },
+    score: currentScore,
+    decoded,
+    accepted: null,
+    swappedPair: null,
+    caesar: false,
+  };
+}
+
+export { createSolverIterator };
