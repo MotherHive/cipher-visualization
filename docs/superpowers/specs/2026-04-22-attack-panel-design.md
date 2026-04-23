@@ -51,8 +51,8 @@ frequency (most frequent first, matching the histogram above).
 | State     | Visual                                      |
 |-----------|---------------------------------------------|
 | Empty     | `·` placeholder, `--text-dim`               |
-| Tentative | Light desaturated green — initial guess      |
-| Locked    | Dark green — accepted by hill climber        |
+| Tentative | Dark green — initial guess                   |
+| Locked    | Light desaturated green — accepted by hill climber |
 | Swapping  | Brief pulse animation on the two test cells  |
 
 - When a swap is attempted, the two affected bottom-row cells pulse.
@@ -88,8 +88,8 @@ During solve, the 16x16 grid becomes a live partial-decryption readout.
   (TH, HE, IN, THE, AND, etc.) get a subtle green background tint. As
   more text resolves and longer recognizable sequences form, tint gets
   brighter.
-- Uses same desaturated/dark green scale as mapping table — light
-  desaturated green for tentative decodes, darker green for locked.
+- Uses same desaturated/dark green scale as mapping table — darker
+  green for tentative decodes, light desaturated green for locked.
 - Grid is read-only during solve.
 
 ---
@@ -110,13 +110,13 @@ Toolbar row at bottom of attack panel:
    populates top row sorted by frequency.
 3. **MAPPING** — initial guess: ciphertext chars mapped to English frequency
    order (space, E, T, A, O...). Bottom row fills in with tentative
-   (light desaturated green) guesses. Grid updates with partial decode.
+   (dark green) guesses. Grid updates with partial decode.
    Score track plots first point.
 4. **REFINING** — hill climber iterates. Each iteration picks two mappings,
    swaps them, scores the result. If better: accept (cells settle, score
    goes up). If worse: reject (cells snap back, red dot on track). English
    highlighting updates as sequences form.
-5. **SOLVED** — score plateaus, all mappings lock to dark green. State label
+5. **SOLVED** — score plateaus, all mappings lock to light green. State label
    updates. For Caesar, solver detects uniform shift and locks all mappings
    at once during MAPPING, skipping REFINING.
 6. **FAILED** — score can't improve past threshold after max attempts. Grid
@@ -191,7 +191,7 @@ Modified files:
 - [x] Same solver process for Caesar and Substitution (frequency + hill climb)
 - [x] Caesar detected as special case — all mappings lock at once
 - [x] Mapping table shows only characters present in ciphertext
-- [x] Light desaturated green for tentative guesses, dark green for locked
+- [x] Dark green for tentative guesses, light desaturated green for locked
 - [x] Score track as sparkline with red dots for rejected swaps
 - [x] Grid highlights likely English sequences with green tint
 - [x] Automatic by default with play/pause/step controls

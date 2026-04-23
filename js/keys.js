@@ -1,21 +1,17 @@
-const PRINTABLE_START = 32;
-const PRINTABLE_END = 126;
-const PRINTABLE_CHARS = Array.from(
-  { length: PRINTABLE_END - PRINTABLE_START + 1 },
-  (_, i) => String.fromCharCode(PRINTABLE_START + i)
-);
+import { PRINTABLE_START, PRINTABLE_RANGE } from "./constants.js";
+
+const SUBSTITUTION_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 export function randomKey(cipherType) {
   switch (cipherType) {
     case "caesar": {
-      return String(1 + Math.floor(Math.random() * 94));
+      return String(1 + Math.floor(Math.random() * (PRINTABLE_RANGE - 1)));
     }
     case "substitution": {
-      const identity = PRINTABLE_CHARS.join("");
-      let shuffled = identity;
+      let shuffled = SUBSTITUTION_ALPHABET;
 
-      while (shuffled === identity) {
-        const alphabet = [...PRINTABLE_CHARS];
+      while (shuffled === SUBSTITUTION_ALPHABET) {
+        const alphabet = SUBSTITUTION_ALPHABET.split("");
         // Fisher-Yates shuffle
         for (let i = alphabet.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -30,7 +26,7 @@ export function randomKey(cipherType) {
       const len = 3 + Math.floor(Math.random() * 6); // 3–8 chars
       let word = "";
       for (let i = 0; i < len; i++) {
-        word += String.fromCharCode(65 + Math.floor(Math.random() * 26));
+        word += String.fromCharCode(PRINTABLE_START + Math.floor(Math.random() * PRINTABLE_RANGE));
       }
       return word;
     }

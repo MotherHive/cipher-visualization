@@ -10,6 +10,9 @@ export function initAttackPanel(panel) {
   const stateLabel = panel.querySelector(".attack-state");
   const playBtn = panel.querySelector(".attack-play-btn");
   const stepBtn = panel.querySelector(".attack-step-btn");
+  const speedSlider = panel.querySelector(".attack-speed");
+  const speedValueLabel = panel.querySelector(".attack-speed-value");
+  const iterLabel = panel.querySelector(".attack-iter");
   const gridContainer = panel.querySelector(".text-grid");
 
   let iterator = null;
@@ -20,7 +23,31 @@ export function initAttackPanel(panel) {
   let plainCells = {};    // char -> DOM element in plain row
   let scoreHistory = [];
   let currentPhase = "IDLE";
+  let currentIteration = 0;
+  let currentTotalIterations = 0;
   const MAX_SCORE_POINTS = 240;
+
+  function stepsPerFrame() {
+    const exp = Number.parseInt(speedSlider?.value ?? "2", 10);
+    return Math.pow(10, Number.isNaN(exp) ? 2 : exp);
+  }
+
+  function updateSpeedLabel() {
+    if (speedValueLabel) speedValueLabel.textContent = `${stepsPerFrame()}×`;
+  }
+
+  function updateIterLabel() {
+    if (!iterLabel) return;
+    const iter = currentIteration.toLocaleString();
+    if (currentTotalIterations > 0) {
+      iterLabel.textContent = `iter ${iter} / ${currentTotalIterations.toLocaleString()}`;
+    } else {
+      iterLabel.textContent = `iter ${iter}`;
+    }
+  }
+
+  speedSlider?.addEventListener("input", updateSpeedLabel);
+  updateSpeedLabel();
 
   // --- Mapping table ---
 
@@ -183,6 +210,10 @@ export function initAttackPanel(panel) {
     scoreValue.textContent = Math.round(data.score);
     drawSparkline();
 
+    if (typeof data.iteration === "number") currentIteration = data.iteration;
+    if (typeof data.totalIterations === "number") currentTotalIterations = data.totalIterations;
+    updateIterLabel();
+
     updateGridHighlighting(data.decoded, data.phase);
 
     if (data.phase === "SOLVED" || data.phase === "FAILED") {
@@ -197,12 +228,10 @@ export function initAttackPanel(panel) {
 
   // --- Controls ---
 
-  const STEPS_PER_FRAME = 100; // batch solver refinement steps per animation frame
-
   function autoStep() {
     if (!playing || !iterator) return;
 
-    const stepsThisFrame = currentPhase === "REFINING" ? STEPS_PER_FRAME : 1;
+    const stepsThisFrame = currentPhase === "REFINING" ? stepsPerFrame() : 1;
 
     // Run multiple solver steps per frame, only render the last one
     let lastStep = null;
@@ -252,6 +281,9 @@ export function initAttackPanel(panel) {
     iterator = null;
     scoreHistory = [];
     currentPhase = "IDLE";
+    currentIteration = 0;
+    currentTotalIterations = 0;
+    updateIterLabel();
     playBtn.innerHTML = "&#9654;";
     playBtn.disabled = false;
     stepBtn.disabled = true;
@@ -287,12 +319,12 @@ export function initAttackPanel(panel) {
   // --- Public API ---
 
   return {
-    startSolve(ciphertext) {
+    startSolve(ciphertext, options = {}) {
       panel._stopGridAnimation?.();
       reset();
       attackPanel.hidden = false;
       buildMappingTable(ciphertext);
-      iterator = createSolverIterator(ciphertext);
+      iterator = createSolverIterator(ciphertext, options);
       setState("ANALYZING");
 
       const firstStep = iterator.next();

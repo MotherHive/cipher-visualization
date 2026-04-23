@@ -1,6 +1,5 @@
 import { renderHistogram } from "./histogram.js";
-
-const MAX_TEXT_LENGTH = 256;
+import { PRINTABLE_START, PRINTABLE_END, PRINTABLE_RANGE, MAX_TEXT_LENGTH } from "./constants.js";
 
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
@@ -60,18 +59,10 @@ export function initCaesar(tab) {
     }
 
     function normalizeSubstitutionKey(key) {
-        const normalized = (key ?? "").slice(0, PRINTABLE_RANGE);
-        if (normalized.length !== PRINTABLE_RANGE) return null;
-
-        const uniqueChars = new Set(normalized);
-        if (uniqueChars.size !== PRINTABLE_RANGE) return null;
-
-        for (const ch of normalized) {
-            const code = ch.charCodeAt(0);
-            if (code < PRINTABLE_START || code > PRINTABLE_END) return null;
-        }
-
-        return normalized;
+        const upper = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
+        if (upper.length !== 26) return null;
+        if (new Set(upper).size !== 26) return null;
+        return upper;
     }
 
     function substitutionEncrypt(text, key) {
@@ -81,16 +72,21 @@ export function initCaesar(tab) {
 
         return sourceText.split("").map((char) => {
             const code = char.charCodeAt(0);
-            if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
-                return normalizedKey[code - PRINTABLE_START];
+            if (code >= 65 && code <= 90) {
+                return normalizedKey[code - 65];
             }
-
+            if (code >= 97 && code <= 122) {
+                return normalizedKey[code - 97].toLowerCase();
+            }
             return char;
         }).join("");
     }
 
     function vigenereEncrypt(text, key) {
-        const normalizedKey = (key ?? "").toUpperCase().replace(/[^A-Z]/g, "");
+        const normalizedKey = (key ?? "").split("").filter((c) => {
+            const code = c.charCodeAt(0);
+            return code >= PRINTABLE_START && code <= PRINTABLE_END;
+        }).join("");
         const sourceText = clampText(text);
         if (!normalizedKey) return sourceText;
 
@@ -99,13 +95,15 @@ export function initCaesar(tab) {
         return sourceText.split("").map((char) => {
             const code = char.charCodeAt(0);
 
-            if (code < 65 || code > 90) {
+            if (code < PRINTABLE_START || code > PRINTABLE_END) {
                 return char;
             }
 
-            const shift = normalizedKey.charCodeAt(keyIndex % normalizedKey.length) - 65;
+            const shift = normalizedKey.charCodeAt(keyIndex % normalizedKey.length) - PRINTABLE_START;
             keyIndex++;
-            return String.fromCharCode(((code - 65 + shift) % 26) + 65);
+            return String.fromCharCode(
+                ((code - PRINTABLE_START + shift) % PRINTABLE_RANGE) + PRINTABLE_START
+            );
         }).join("");
     }
 
@@ -188,10 +186,6 @@ export function initCaesar(tab) {
     };
     tab._getGridContainer = () => gridContainer;
 }
-
-export const PRINTABLE_START = 32;  // space
-export const PRINTABLE_END = 126;   // tilde ~
-export const PRINTABLE_RANGE = PRINTABLE_END - PRINTABLE_START + 1; // 95
 
 export function caesarShift(text, shift) {
     shift = ((shift % PRINTABLE_RANGE) + PRINTABLE_RANGE) % PRINTABLE_RANGE;
@@ -323,14 +317,3 @@ function scrambleReveal(finalText, container, controls = {}) {
 
     setFrameId(requestAnimationFrame(tick));
 }
-    function clampText(text) {
-        return (text ?? "").slice(0, MAX_TEXT_LENGTH);
-    }
-
-    function syncInputText() {
-        const clamped = clampText(inputText.value);
-        if (inputText.value !== clamped) {
-            inputText.value = clamped;
-        }
-        return clamped;
-    }

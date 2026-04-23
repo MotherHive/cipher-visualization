@@ -11,7 +11,7 @@ const PLAINTEXTS = [
   "IN THE BEGINNING GOD CREATED THE HEAVEN AND THE EARTH AND THE EARTH WAS WITHOUT FORM AND VOID AND DARKNESS WAS UPON THE FACE",
 ];
 
-const MAX_TEXT_LENGTH = 256;
+import { MAX_TEXT_LENGTH } from "./constants.js";
 
 export function randomPlaintext() {
   const pool = [...PLAINTEXTS];

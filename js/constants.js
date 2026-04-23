@@ -1,0 +1,4 @@
+export const PRINTABLE_START = 32;  // space
+export const PRINTABLE_END = 126;    // tilde ~
+export const PRINTABLE_RANGE = PRINTABLE_END - PRINTABLE_START + 1; // 95
+export const MAX_TEXT_LENGTH = 256;

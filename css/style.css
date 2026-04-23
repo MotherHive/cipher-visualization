@@ -416,6 +416,10 @@ h6 { font-size: var(--text-base);}
   margin-bottom: var(--space-4);
 }
 
+.panel-matrix .panel-heading {
+  margin-left: 10px;
+}
+
 .textarea-wrap {
   position: relative;
 }
@@ -451,8 +455,13 @@ h6 { font-size: var(--text-base);}
 
 .matrix-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-3);
   margin-top: var(--space-4);
+}
+
+.matrix-actions .rounds-wrap {
+  margin-left: auto;
 }
 
 .encrypt-btn,
@@ -612,13 +621,13 @@ h6 { font-size: var(--text-base);}
 }
 
 .mapping-cell[data-state="tentative"] {
-  color: #6fbf8a;
-  background: #1a2e22;
+  color: #0a0a0a;
+  background: #2d7a4a;
 }
 
 .mapping-cell[data-state="locked"] {
-  color: #0a0a0a;
-  background: #2d7a4a;
+  color: #6fbf8a;
+  background: #1a2e22;
 }
 
 .mapping-cell[data-state="swapping"] {
@@ -698,13 +707,84 @@ h6 { font-size: var(--text-base);}
   margin-left: auto;
 }
 
+.attack-speed-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.attack-speed-label {
+  opacity: 0.7;
+}
+
+.attack-speed {
+  width: 80px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.attack-speed-value {
+  min-width: 3.5ch;
+  text-align: right;
+  color: var(--accent);
+}
+
+.attack-iter {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rounds-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rounds-label {
+  opacity: 0.7;
+}
+
+.rounds-input {
+  box-sizing: content-box;
+  width: 3ch;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text);
+  background: var(--bg-2, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.rounds-input::-webkit-inner-spin-button,
+.rounds-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Grid cell highlighting during solve */
 .cell[data-solve="tentative"] {
-  color: #6fbf8a;
+  color: #2d7a4a;
 }
 
 .cell[data-solve="locked"] {
-  color: #2d7a4a;
+  color: #6fbf8a;
 }
 
 .cell[data-english="true"] {

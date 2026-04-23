@@ -1,14 +1,13 @@
 // solver.js — Cipher solver algorithm foundation
 // Pure functions only, no DOM dependencies.
 
+import { PRINTABLE_START, PRINTABLE_END, PRINTABLE_RANGE } from "./constants.js";
+
 // ---------------------------------------------------------------------------
 // Step 1: English frequency table
 // ---------------------------------------------------------------------------
 
-const PRINTABLE_START = 32;   // space
-const PRINTABLE_END   = 126;  // tilde
-const PRINTABLE_RANGE = 95;   // number of printable ASCII characters
-const FREQ_FLOOR      = 0.0001;
+const FREQ_FLOOR = 0.0001;
 
 // Approximate English character frequencies (single characters).
 // Source: standard letter-frequency tables plus punctuation estimates.
@@ -137,7 +136,6 @@ const FALLBACK_WORD_LOG = {
   THEY: -2.25,
   HIS: -2.28,
   WERE: -2.30,
-  GLITTER: -3.20,
 };
 
 const FALLBACK_WORD_MAP = new Map(
@@ -317,9 +315,6 @@ function scoreReadableText(text, model) {
 
   const vowelPoorWords = text.toUpperCase().match(/\b[BCDFGHJKLMNPQRSTVWXYZ]{4,}\b/g) ?? [];
   score -= vowelPoorWords.length * 2.75;
-
-  const commonWordRuns = text.toUpperCase().match(/\b(THE|AND|THAT|WITH|HAVE|FROM|YOUR|HEARD|TOLD|MANY|LIFE|SOLD|OUTSIDE|BEHOLD)\b/g) ?? [];
-  score += commonWordRuns.length * 0.8;
 
   return score;
 }
@@ -688,11 +683,23 @@ function runGreedyPolish(ciphertext, startingMapping, cipherChars, scoreDecoded)
  *
  * @param {string} ciphertext
  */
-function* createSolverIterator(ciphertext) {
+const ITERS_PER_ROUND = 12000;
+const DEFAULT_ROUNDS = 15;
+
+function solverTotalIterations(rounds) {
+  return PRINTABLE_RANGE + rounds * ITERS_PER_ROUND;
+}
+
+export { ITERS_PER_ROUND, DEFAULT_ROUNDS, solverTotalIterations };
+
+function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
   // Snapshot the scoring tables once so a background model upgrade cannot
   // change the solver's fitness landscape mid-run.
   const scoringModel = getScoringModel();
   const scoreDecoded = (text) => scoreTextWithModel(text, scoringModel);
+
+  const totalIterations = solverTotalIterations(rounds);
+  let globalIteration = 0;
 
   // --- Step 1: Caesar brute force ---
   let caesar = {
@@ -703,6 +710,7 @@ function* createSolverIterator(ciphertext) {
   };
 
   for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
+    globalIteration++;
     const decodedCandidate = decodeCaesarShift(ciphertext, shift);
     const wordScore = scoreCaesarCandidate(decodedCandidate);
     const quadScore = scoreDecoded(decodedCandidate);
@@ -726,7 +734,8 @@ function* createSolverIterator(ciphertext) {
       decoded: decodedCandidate,
       accepted: null,
       swappedPair: null,
-      iteration: shift,
+      iteration: globalIteration,
+      totalIterations,
       shift,
       bestShift: caesar.shift,
     };
@@ -750,6 +759,8 @@ function* createSolverIterator(ciphertext) {
       decoded: caesarDecoded,
       accepted: null,
       swappedPair: null,
+      iteration: globalIteration,
+      totalIterations,
     };
     yield {
       phase: 'SOLVED',
@@ -758,6 +769,8 @@ function* createSolverIterator(ciphertext) {
       decoded: caesarDecoded,
       accepted: null,
       swappedPair: null,
+      iteration: globalIteration,
+      totalIterations,
       caesar: true,
       shift: caesar.shift,
     };
@@ -772,6 +785,8 @@ function* createSolverIterator(ciphertext) {
     decoded,
     accepted: null,
     swappedPair: null,
+    iteration: globalIteration,
+    totalIterations,
   };
 
   // --- Step 3: Simulated annealing ---
@@ -781,8 +796,7 @@ function* createSolverIterator(ciphertext) {
   const cipherChars = Object.keys(counts)
     .sort((a, b) => counts[b] - counts[a])
     .slice(0, LETTERS_BY_FREQ.length);
-  const ITERS_PER_ROUND = 12000;
-  const NUM_ROUNDS = 24;
+  const NUM_ROUNDS = rounds;
   const MAX_NO_IMPROVE = 4500;
   const T_START = 20;
   const T_MIN = 0.01;
@@ -791,7 +805,6 @@ function* createSolverIterator(ciphertext) {
   let bestScore = currentScore;
   let bestMapping = { ...mapping };
   let bestDecoded = decoded;
-  let globalIteration = 0;
 
   for (let round = 0; round < NUM_ROUNDS; round++) {
     // Stochastic restarts: most rounds refine around the best-known mapping,
@@ -872,6 +885,7 @@ function* createSolverIterator(ciphertext) {
         accepted: delta > 0,
         swappedPair: [charA, charB],
         iteration: globalIteration,
+        totalIterations,
       };
     }
   }
@@ -891,6 +905,8 @@ function* createSolverIterator(ciphertext) {
     decoded: bestDecoded,
     accepted: null,
     swappedPair: null,
+    iteration: globalIteration,
+    totalIterations,
     caesar: false,
   };
 }

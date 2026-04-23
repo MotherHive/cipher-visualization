@@ -2,7 +2,7 @@ import { initCaesar } from "./caesar.js";
 import { randomKey } from "./keys.js";
 import { randomPlaintext } from "./plaintext.js";
 import { initAttackPanel } from "./attack-panel.js";
-import { loadScoringData } from "./solver.js";
+import { DEFAULT_ROUNDS, loadScoringData } from "./solver.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const panel = document.getElementById("crypto-solver");
@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const randomTextBtn = panel.querySelector(".random-text-btn");
   const solveBtn = panel.querySelector(".solve-btn");
   const encryptBtn = panel.querySelector(".encrypt-btn");
+  const roundsInput = panel.querySelector(".rounds-input");
 
   randomizeBtn.addEventListener("click", () => {
     let key;
@@ -59,11 +60,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   syncCipherControls();
 
+  function currentRounds() {
+    const parsed = Number.parseInt(roundsInput?.value ?? "", 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return DEFAULT_ROUNDS;
+    return Math.min(parsed, 50);
+  }
+
   solveBtn.addEventListener("click", () => {
     const ciphertext = panel._getCiphertext?.() ?? panel._getCurrentText?.();
     if (!ciphertext) return;
 
     panel._showCiphertext?.({ animate: false, force: true });
-    attackPanel.startSolve(ciphertext);
+    attackPanel.startSolve(ciphertext, { rounds: currentRounds() });
   });
 });

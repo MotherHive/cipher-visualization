@@ -67,10 +67,15 @@
 
                     <!-- Left: Matrix View -->
                     <div class="panel panel-matrix">
+                        <h4 class="panel-heading">Encrypted Text</h4>
                         <div class="text-grid"></div>
                         <div class="matrix-actions">
                             <button class="encrypt-btn">Encrypt</button>
                             <button class="solve-btn">Solve</button>
+                            <label class="rounds-wrap" title="Simulated-annealing rounds">
+                                <span class="rounds-label">Rounds</span>
+                                <input type="number" class="rounds-input" min="1" max="50" value="15" />
+                            </label>
                         </div>
                     </div>
 
@@ -103,6 +108,12 @@
                     <div class="attack-controls">
                         <button class="attack-play-btn" title="Play">&#9654;</button>
                         <button class="attack-step-btn" title="Step" disabled>&#9197;</button>
+                        <label class="attack-speed-wrap" title="Steps per frame">
+                            <span class="attack-speed-label">Speed</span>
+                            <input type="range" class="attack-speed" min="0" max="3" step="1" value="2" />
+                            <span class="attack-speed-value">100×</span>
+                        </label>
+                        <span class="attack-iter" title="Iterations">iter 0</span>
                         <span class="attack-state">IDLE</span>
                     </div>
                 </div>
