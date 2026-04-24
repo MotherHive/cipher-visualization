@@ -4,8 +4,6 @@
 import { PRINTABLE_START, PRINTABLE_END, PRINTABLE_RANGE } from "./constants.js";
 import {
   scoreText,
-  scoreQuadgrams,
-  findBestCaesarShift,
   findEnglishSpans,
 } from "./solver.js";
 
@@ -141,6 +139,99 @@ function shiftToChar(shift) {
 
 export { decodeWithKey, shiftToChar };
 
+// Full 95-char printable ASCII frequency table for English prose.
+// Space is the most common character (~18%). Lowercase letters follow standard
+// English letter frequencies. Uppercase letters are ~5% as common as their
+// lowercase counterparts. Punctuation and digits use small but non-negligible
+// values so they don't produce false chi-squared minima.
+// Source: Lewand (2000) for space + letters; punctuation estimated from corpora.
+const PRINTABLE_FREQ = (() => {
+  const table = new Array(PRINTABLE_RANGE).fill(0.00001);
+  const entries = {
+    " ": 0.1831,
+    "e": 0.1027, "t": 0.0754, "a": 0.0654, "o": 0.0638, "i": 0.0566,
+    "n": 0.0562, "s": 0.0514, "h": 0.0492, "r": 0.0484, "d": 0.0337,
+    "l": 0.0322, "u": 0.0225, "c": 0.0223, "m": 0.0201, "f": 0.0175,
+    "w": 0.0168, "g": 0.0162, "y": 0.0159, "p": 0.0151, "b": 0.0099,
+    "v": 0.0079, "k": 0.0056, "x": 0.0013, "j": 0.0011, "q": 0.0008,
+    "z": 0.0005,
+    ",": 0.0100, ".": 0.0100,
+  };
+  for (const [ch, f] of Object.entries(entries)) {
+    table[ch.charCodeAt(0) - PRINTABLE_START] = f;
+    // Uppercase versions are much rarer than lowercase in normal prose
+    if (ch >= "a" && ch <= "z") {
+      table[ch.toUpperCase().charCodeAt(0) - PRINTABLE_START] = f * 0.05;
+    }
+  }
+  return table;
+})();
+
+/**
+ * Shift every printable character in a column by -shift (decoding direction).
+ */
+function decodeColumn(column, shift) {
+  let out = "";
+  for (const ch of column) {
+    const code = ch.charCodeAt(0);
+    if (code < PRINTABLE_START || code > PRINTABLE_END) {
+      out += ch;
+      continue;
+    }
+    out += String.fromCharCode(
+      ((code - PRINTABLE_START - shift + PRINTABLE_RANGE) % PRINTABLE_RANGE) + PRINTABLE_START
+    );
+  }
+  return out;
+}
+
+/**
+ * Negative chi-squared distance between the full 95-char printable-ASCII
+ * distribution of `text` and English prose frequencies. Higher is more
+ * English-like. Returns -Infinity for empty strings.
+ *
+ * Using all 95 characters (not just letters) is essential for 95-char Vigenère:
+ * each column contains spaces, punctuation, and digits from the plaintext, so
+ * a letter-only scorer cannot reliably distinguish the correct shift.
+ */
+function scoreColumnEnglishness(text) {
+  const counts = new Array(PRINTABLE_RANGE).fill(0);
+  let total = 0;
+  for (const ch of text) {
+    const code = ch.charCodeAt(0);
+    if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
+      counts[code - PRINTABLE_START]++;
+      total++;
+    }
+  }
+  if (total === 0) return -Infinity;
+
+  let chi = 0;
+  for (let i = 0; i < PRINTABLE_RANGE; i++) {
+    const expected = PRINTABLE_FREQ[i] * total;
+    const observed = counts[i];
+    chi += (observed - expected) ** 2 / expected;
+  }
+  return -chi;
+}
+
+/**
+ * Brute-force all 95 shifts on `column` and return the one whose decoded output
+ * best matches English prose character frequencies (full 95-char chi-squared).
+ */
+function bestShiftForColumn(column) {
+  let bestShift = 0;
+  let bestScore = -Infinity;
+  for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
+    const score = scoreColumnEnglishness(decodeColumn(column, shift));
+    if (score > bestScore) {
+      bestScore = score;
+      bestShift = shift;
+    }
+  }
+  return bestShift;
+}
+
 function* createVigenereSolverIterator(ciphertext) {
   const N = printableLength(ciphertext);
   const K_max = Math.min(MAX_KEY_LENGTH_CAP, Math.floor(N / MIN_TEXT_PER_COLUMN));
@@ -184,8 +275,8 @@ function* createVigenereSolverIterator(ciphertext) {
     const cols = columnsFor(ciphertext, K);
     const shifts = [];
     for (let c = 0; c < K; c++) {
-      const result = findBestCaesarShift(cols[c], scoreQuadgrams);
-      shifts.push(result.shift);
+      const shift = bestShiftForColumn(cols[c]);
+      shifts.push(shift);
       const partialKey = shifts.concat(new Array(K - shifts.length).fill(null));
       const partialDecoded = decodeWithKey(ciphertext, shifts.concat(new Array(K - shifts.length).fill(0)));
       const partialScore = scoreText(partialDecoded);
