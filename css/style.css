@@ -838,3 +838,104 @@ h6 { font-size: var(--text-base);}
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* ---------------------------------------------------------------------------
+   Vigenère attack panel
+   --------------------------------------------------------------------------- */
+
+.vigenere-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ioc-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 90px;
+  padding: var(--space-2);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+}
+
+.ioc-bar {
+  position: relative;
+  flex: 1;
+  min-width: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ioc-bar-fill {
+  width: 70%;
+  background: var(--text-dim);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: height var(--transition-fast), background var(--transition-fast);
+}
+
+.ioc-bar[data-state="computing"] .ioc-bar-fill {
+  background: var(--text-dim);
+}
+
+.ioc-bar[data-state="candidate"] .ioc-bar-fill {
+  background: var(--accent-dim);
+}
+
+.ioc-bar[data-state="winner"] .ioc-bar-fill {
+  background: #2d7a4a;
+}
+
+.ioc-bar[data-state="rejected"] .ioc-bar-fill {
+  background: var(--text-dim);
+  opacity: 0.35;
+}
+
+.ioc-bar-label {
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.key-row {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.key-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.key-cell[data-state="empty"] {
+  color: var(--text-dim);
+}
+
+.key-cell[data-state="tentative"] {
+  color: #0a0a0a;
+  background: #2d7a4a;
+}
+
+.key-cell[data-state="locked"] {
+  color: #6fbf8a;
+  background: #1a2e22;
+}
+
+.key-cell[data-state="swapping"] {
+  animation: pulse-swap 300ms ease;
+}
