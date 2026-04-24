@@ -236,6 +236,21 @@ function bestShiftForColumn(column) {
   return bestShift;
 }
 
+/**
+ * Fraction of character positions that are part of a recognized English
+ * bigram or trigram (via findEnglishSpans). Used as a threshold-free-ish
+ * confidence signal for SOLVED vs. FAILED classification.
+ */
+function englishCoverage(text) {
+  if (text.length === 0) return 0;
+  const spans = findEnglishSpans(text);
+  let hits = 0;
+  for (const v of spans) if (v) hits++;
+  return hits / spans.length;
+}
+
+export { englishCoverage };
+
 function* createVigenereSolverIterator(ciphertext) {
   const N = printableLength(ciphertext);
   const K_max = Math.min(MAX_KEY_LENGTH_CAP, Math.floor(N / MIN_TEXT_PER_COLUMN));
@@ -307,20 +322,79 @@ function* createVigenereSolverIterator(ciphertext) {
     }
   }
 
-  // Phase C — REFINING (added in Task 3). For now, emit a terminal step.
-  const finalIocBars = iocBars.map((b) => ({
-    ...b,
-    status: best && b.length === best.K ? "winner" : "rejected",
-  }));
+  if (!best) {
+    yield {
+      phase: "FAILED",
+      score: 0,
+      decoded: ciphertext,
+      iteration: decodingIter,
+      totalIterations: totalDecodeIterations,
+      iocBars: iocBars.map((b) => ({ ...b, status: "rejected" })),
+      key: [],
+    };
+    return;
+  }
+
+  // Phase C — REFINING (try shift ± 1 per column, accept if it raises score)
+  const refineTotal = REFINE_MAX_PASSES * best.K * 2;
+  let refineIter = 0;
+  let currentKey = best.key.slice();
+  let currentDecoded = best.decoded;
+  let currentScore = best.score;
+
+  for (let pass = 0; pass < REFINE_MAX_PASSES; pass++) {
+    let changedThisPass = false;
+
+    for (let c = 0; c < best.K; c++) {
+      for (const delta of [-1, 1]) {
+        refineIter++;
+        const trialKey = currentKey.slice();
+        trialKey[c] = ((trialKey[c] + delta) % PRINTABLE_RANGE + PRINTABLE_RANGE) % PRINTABLE_RANGE;
+        const trialDecoded = decodeWithKey(ciphertext, trialKey);
+        const trialScore = scoreText(trialDecoded);
+        const accepted = trialScore > currentScore;
+
+        if (accepted) {
+          currentKey = trialKey;
+          currentDecoded = trialDecoded;
+          currentScore = trialScore;
+          changedThisPass = true;
+        }
+
+        yield {
+          phase: "REFINING",
+          score: currentScore,
+          decoded: currentDecoded,
+          iteration: refineIter,
+          totalIterations: refineTotal,
+          iocBars: iocBars.map((b) => ({
+            ...b,
+            status: b.length === best.K ? "winner" : "rejected",
+          })),
+          key: currentKey.map(shiftToChar),
+          accepted,
+        };
+      }
+    }
+
+    if (!changedThisPass) break;
+  }
+
+  // Phase D — terminal: classify SOLVED vs. FAILED by English coverage
+  const coverage = englishCoverage(currentDecoded);
+  const terminalPhase = coverage >= ENGLISH_COVERAGE_THRESHOLD ? "SOLVED" : "FAILED";
 
   yield {
-    phase: "FAILED",
-    score: best ? best.score : 0,
-    decoded: best ? best.decoded : ciphertext,
-    iteration: decodingIter,
-    totalIterations: totalDecodeIterations,
-    iocBars: finalIocBars,
-    key: best ? best.key.map(shiftToChar) : [],
+    phase: terminalPhase,
+    score: currentScore,
+    decoded: currentDecoded,
+    iteration: refineIter,
+    totalIterations: refineTotal,
+    iocBars: iocBars.map((b) => ({
+      ...b,
+      status: b.length === best.K ? "winner" : "rejected",
+    })),
+    key: currentKey.map(shiftToChar),
   };
 }
 
