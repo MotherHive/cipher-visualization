@@ -47,11 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function syncCipherControls() {
     const isCaesar = cipherSelect.value === "caesar";
-    const solverSupported = cipherSelect.value !== "vigenere";
     if (cipherInfoBtn) cipherInfoBtn.hidden = !isCaesar;
-    solveBtn.disabled = !solverSupported;
-    solveBtn.title = solverSupported ? "" : "Solver currently supports Caesar and substitution only.";
-    encryptBtn.title = solverSupported ? "" : "Encrypt still works for Vigenere, but Solve is disabled.";
+    solveBtn.disabled = false;
+    solveBtn.title = "";
+    encryptBtn.title = "";
   }
 
   cipherSelect.addEventListener("input", () => {
@@ -74,6 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!ciphertext) return;
 
     panel._showCiphertext?.({ animate: false, force: true });
-    attackPanel.startSolve(ciphertext, { rounds: currentRounds() });
+    attackPanel.startSolve(ciphertext, {
+      rounds: currentRounds(),
+      cipherType: cipherSelect.value,
+    });
   });
 });
