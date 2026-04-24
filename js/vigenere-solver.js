@@ -140,10 +140,9 @@ function shiftToChar(shift) {
 export { decodeWithKey, shiftToChar };
 
 // Full 95-char printable ASCII frequency table for English prose.
-// Space is the most common character (~18%). Lowercase letters follow standard
-// English letter frequencies. Uppercase letters are ~5% as common as their
-// lowercase counterparts. Punctuation and digits use small but non-negligible
-// values so they don't produce false chi-squared minima.
+// Space is the most common character (~18%); letter frequencies are written
+// on the lowercase slots. The scorer lower-cases the observed text before
+// comparing, so uppercase slots just need a floor to avoid divide-by-zero.
 // Source: Lewand (2000) for space + letters; punctuation estimated from corpora.
 const PRINTABLE_FREQ = (() => {
   const table = new Array(PRINTABLE_RANGE).fill(0.00001);
@@ -159,10 +158,6 @@ const PRINTABLE_FREQ = (() => {
   };
   for (const [ch, f] of Object.entries(entries)) {
     table[ch.charCodeAt(0) - PRINTABLE_START] = f;
-    // Uppercase versions are much rarer than lowercase in normal prose
-    if (ch >= "a" && ch <= "z") {
-      table[ch.toUpperCase().charCodeAt(0) - PRINTABLE_START] = f * 0.05;
-    }
   }
   // Normalize so the distribution sums to 1.0 — chi-squared requires this to
   // produce correctly-scaled expected counts.
@@ -199,9 +194,12 @@ function decodeColumn(column, shift) {
  * a letter-only scorer cannot reliably distinguish the correct shift.
  */
 function scoreColumnEnglishness(text) {
+  // Site plaintexts are all uppercase, but frequencies are keyed on lowercase.
+  // Lower-case the observed text so A-Z and a-z both hit the same slot.
+  const lower = text.toLowerCase();
   const counts = new Array(PRINTABLE_RANGE).fill(0);
   let total = 0;
-  for (const ch of text) {
+  for (const ch of lower) {
     const code = ch.charCodeAt(0);
     if (code >= PRINTABLE_START && code <= PRINTABLE_END) {
       counts[code - PRINTABLE_START]++;
