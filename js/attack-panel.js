@@ -1,4 +1,5 @@
 import { createSolverIterator, findEnglishSpans, countFrequencies } from "./solver.js";
+import { createVigenereSolverIterator } from "./vigenere-solver.js";
 
 export function initAttackPanel(panel) {
   // Query all DOM elements from the attack panel HTML
@@ -14,6 +15,17 @@ export function initAttackPanel(panel) {
   const speedValueLabel = panel.querySelector(".attack-speed-value");
   const iterLabel = panel.querySelector(".attack-iter");
   const gridContainer = panel.querySelector(".text-grid");
+
+  // Mapping-table wrap (mono-alphabetic render mode)
+  const mappingTableWrap = panel.querySelector(".mapping-table-wrap");
+  const attackBody = panel.querySelector(".attack-body");
+
+  let mode = "substitution";       // "substitution" | "vigenere"
+  let vigenereWrap = null;         // container for .ioc-chart + .key-row
+  let iocChart = null;             // DOM element
+  let keyRow = null;               // DOM element
+  let iocBarEls = [];              // array of .ioc-bar elements, indexed by length-1
+  let keyCellEls = [];             // array of .key-cell elements, indexed by column
 
   let iterator = null;
   let playing = false;
@@ -101,6 +113,31 @@ export function initAttackPanel(panel) {
         pCell.dataset.state = "tentative";
       }
     }
+  }
+
+  // --- Vigenère render mode (stubs — filled in Task 6) ---
+
+  function buildVigenereUI() {
+    // Stub: leave mapping table visible for now; Task 6 replaces with IoC chart
+    // and key row. This stub keeps the panel from crashing when Vigenère runs.
+    iocBarEls = [];
+    keyCellEls = [];
+  }
+
+  function updateVigenereUI(/* step */) {
+    // Stub: no-op until Task 6.
+  }
+
+  function teardownVigenereUI() {
+    if (vigenereWrap) {
+      vigenereWrap.remove();
+      vigenereWrap = null;
+    }
+    iocChart = null;
+    keyRow = null;
+    iocBarEls = [];
+    keyCellEls = [];
+    if (mappingTableWrap) mappingTableWrap.hidden = false;
   }
 
   // --- Score sparkline (canvas) ---
@@ -201,7 +238,11 @@ export function initAttackPanel(panel) {
     const data = step.value;
     setState(data.phase);
 
-    updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
+    if (mode === "vigenere") {
+      updateVigenereUI(data);
+    } else {
+      updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
+    }
 
     scoreHistory.push({ score: data.score, accepted: data.accepted });
     if (scoreHistory.length > MAX_SCORE_POINTS * 2) {
@@ -214,7 +255,7 @@ export function initAttackPanel(panel) {
     if (typeof data.totalIterations === "number") currentTotalIterations = data.totalIterations;
     updateIterLabel();
 
-    updateGridHighlighting(data.decoded, data.phase);
+    if (data.decoded) updateGridHighlighting(data.decoded, data.phase);
 
     if (data.phase === "SOLVED" || data.phase === "FAILED") {
       if (data.phase === "FAILED") {
@@ -300,6 +341,8 @@ export function initAttackPanel(panel) {
       delete span.dataset.solve;
       delete span.dataset.english;
     }
+
+    teardownVigenereUI();
   }
 
   playBtn.addEventListener("click", () => {
@@ -323,8 +366,16 @@ export function initAttackPanel(panel) {
       panel._stopGridAnimation?.();
       reset();
       attackPanel.hidden = false;
-      buildMappingTable(ciphertext);
-      iterator = createSolverIterator(ciphertext, options);
+
+      mode = options.cipherType === "vigenere" ? "vigenere" : "substitution";
+
+      if (mode === "vigenere") {
+        buildVigenereUI();
+        iterator = createVigenereSolverIterator(ciphertext);
+      } else {
+        buildMappingTable(ciphertext);
+        iterator = createSolverIterator(ciphertext, options);
+      }
       setState("ANALYZING");
 
       const firstStep = iterator.next();
