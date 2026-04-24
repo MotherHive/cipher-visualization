@@ -911,4 +911,4 @@ function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
   };
 }
 
-export { createSolverIterator };
+export { createSolverIterator, findBestCaesarShift };

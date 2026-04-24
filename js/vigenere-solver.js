@@ -5,6 +5,7 @@ import { PRINTABLE_START, PRINTABLE_END, PRINTABLE_RANGE } from "./constants.js"
 import {
   scoreText,
   scoreQuadgrams,
+  findBestCaesarShift,
   findEnglishSpans,
 } from "./solver.js";
 
@@ -81,6 +82,65 @@ function printableLength(text) {
   return n;
 }
 
+/**
+ * Return divisors of n that are ≥ 2 and < n (excludes n itself and 1).
+ * Used to mitigate the IoC "multiples problem" (true K=3 also lights up 6, 9).
+ */
+function divisorsBelow(n) {
+  const out = [];
+  for (let d = 2; d < n; d++) {
+    if (n % d === 0) out.push(d);
+  }
+  return out;
+}
+
+/**
+ * Given the ANALYZING sweep results, build the set of candidate key lengths
+ * to fully decode. Always includes the top two by IoC plus divisors of the top.
+ */
+function buildCandidateLengths(iocBars) {
+  if (iocBars.length === 0) return [];
+  const ranked = [...iocBars].sort((a, b) => b.ioc - a.ioc);
+  const top1 = ranked[0].length;
+  const set = new Set([top1]);
+  if (ranked.length > 1) set.add(ranked[1].length);
+  for (const d of divisorsBelow(top1)) set.add(d);
+  return [...set].sort((a, b) => a - b);
+}
+
+/**
+ * Reconstruct plaintext from ciphertext and a shift-per-column key array.
+ * Non-printable characters are passed through (mirrors vigenereEncrypt).
+ * Key index advances only on printable characters, matching encrypt behavior.
+ */
+function decodeWithKey(ciphertext, keyShifts) {
+  const K = keyShifts.length;
+  let out = "";
+  let printableIndex = 0;
+  for (const ch of ciphertext) {
+    const code = ch.charCodeAt(0);
+    if (code < PRINTABLE_START || code > PRINTABLE_END) {
+      out += ch;
+      continue;
+    }
+    const shift = keyShifts[printableIndex % K];
+    out += String.fromCharCode(
+      ((code - PRINTABLE_START - shift + PRINTABLE_RANGE) % PRINTABLE_RANGE) + PRINTABLE_START
+    );
+    printableIndex++;
+  }
+  return out;
+}
+
+/**
+ * Turn a shift value into its printable key character.
+ */
+function shiftToChar(shift) {
+  return String.fromCharCode(PRINTABLE_START + shift);
+}
+
+export { decodeWithKey, shiftToChar };
+
 function* createVigenereSolverIterator(ciphertext) {
   const N = printableLength(ciphertext);
   const K_max = Math.min(MAX_KEY_LENGTH_CAP, Math.floor(N / MIN_TEXT_PER_COLUMN));
@@ -114,15 +174,58 @@ function* createVigenereSolverIterator(ciphertext) {
     };
   }
 
-  // Placeholder terminator — replaced in Task 2 once DECODING is implemented.
+  // Phase B — DECODING (per-column Caesar on each candidate key length)
+  const candidates = buildCandidateLengths(iocBars);
+  const totalDecodeIterations = candidates.reduce((sum, K) => sum + K, 0);
+  let decodingIter = 0;
+  let best = null; // { K, key, decoded, score }
+
+  for (const K of candidates) {
+    const cols = columnsFor(ciphertext, K);
+    const shifts = [];
+    for (let c = 0; c < K; c++) {
+      const result = findBestCaesarShift(cols[c], scoreQuadgrams);
+      shifts.push(result.shift);
+      const partialKey = shifts.concat(new Array(K - shifts.length).fill(null));
+      const partialDecoded = decodeWithKey(ciphertext, shifts.concat(new Array(K - shifts.length).fill(0)));
+      const partialScore = scoreText(partialDecoded);
+      decodingIter++;
+
+      yield {
+        phase: "DECODING",
+        score: partialScore,
+        decoded: partialDecoded,
+        iteration: decodingIter,
+        totalIterations: totalDecodeIterations,
+        iocBars: iocBars.map((b) => ({
+          ...b,
+          status: b.length === K ? "computing" : b.status,
+        })),
+        key: partialKey.map((s) => (s === null ? null : shiftToChar(s))),
+      };
+    }
+
+    const decoded = decodeWithKey(ciphertext, shifts);
+    const score = scoreText(decoded);
+    if (!best || score > best.score) {
+      best = { K, key: shifts, decoded, score };
+    }
+  }
+
+  // Phase C — REFINING (added in Task 3). For now, emit a terminal step.
+  const finalIocBars = iocBars.map((b) => ({
+    ...b,
+    status: best && b.length === best.K ? "winner" : "rejected",
+  }));
+
   yield {
     phase: "FAILED",
-    score: 0,
-    decoded: ciphertext,
-    iteration: K_max,
-    totalIterations: K_max,
-    iocBars: iocBars.map((b) => ({ ...b })),
-    key: [],
+    score: best ? best.score : 0,
+    decoded: best ? best.decoded : ciphertext,
+    iteration: decodingIter,
+    totalIterations: totalDecodeIterations,
+    iocBars: finalIocBars,
+    key: best ? best.key.map(shiftToChar) : [],
   };
 }
 
