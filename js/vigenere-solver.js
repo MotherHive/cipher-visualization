@@ -164,6 +164,10 @@ const PRINTABLE_FREQ = (() => {
       table[ch.toUpperCase().charCodeAt(0) - PRINTABLE_START] = f * 0.05;
     }
   }
+  // Normalize so the distribution sums to 1.0 — chi-squared requires this to
+  // produce correctly-scaled expected counts.
+  const sum = table.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < table.length; i++) table[i] /= sum;
   return table;
 })();
 
