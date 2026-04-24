@@ -118,14 +118,126 @@ export function initAttackPanel(panel) {
   // --- Vigenère render mode (stubs — filled in Task 6) ---
 
   function buildVigenereUI() {
-    // Stub: leave mapping table visible for now; Task 6 replaces with IoC chart
-    // and key row. This stub keeps the panel from crashing when Vigenère runs.
+    if (mappingTableWrap) mappingTableWrap.hidden = true;
+
+    vigenereWrap = document.createElement("div");
+    vigenereWrap.className = "vigenere-wrap";
+
+    const iocWrap = document.createElement("div");
+    iocWrap.className = "ioc-wrap";
+
+    const iocHeading = document.createElement("h4");
+    iocHeading.className = "panel-heading";
+    iocHeading.textContent = "Key length (IoC)";
+    iocWrap.appendChild(iocHeading);
+
+    iocChart = document.createElement("div");
+    iocChart.className = "ioc-chart";
+    iocWrap.appendChild(iocChart);
+
+    vigenereWrap.appendChild(iocWrap);
+
+    const keyWrap = document.createElement("div");
+    keyWrap.className = "key-wrap";
+
+    const keyHeading = document.createElement("h4");
+    keyHeading.className = "panel-heading";
+    keyHeading.textContent = "Key";
+    keyWrap.appendChild(keyHeading);
+
+    keyRow = document.createElement("div");
+    keyRow.className = "key-row";
+    keyWrap.appendChild(keyRow);
+
+    vigenereWrap.appendChild(keyWrap);
+
+    attackBody.insertBefore(vigenereWrap, attackBody.firstChild);
+
     iocBarEls = [];
     keyCellEls = [];
   }
 
-  function updateVigenereUI(/* step */) {
-    // Stub: no-op until Task 6.
+  function ensureIocBars(iocBars) {
+    if (!iocChart) return;
+    if (iocBarEls.length === iocBars.length) return;
+
+    iocChart.innerHTML = "";
+    iocBarEls = [];
+    for (const entry of iocBars) {
+      const bar = document.createElement("div");
+      bar.className = "ioc-bar";
+      bar.dataset.state = "computing";
+
+      const fill = document.createElement("div");
+      fill.className = "ioc-bar-fill";
+      bar.appendChild(fill);
+
+      const label = document.createElement("span");
+      label.className = "ioc-bar-label";
+      label.textContent = String(entry.length);
+      bar.appendChild(label);
+
+      iocChart.appendChild(bar);
+      iocBarEls.push(bar);
+    }
+  }
+
+  function ensureKeyCells(keyLength) {
+    if (!keyRow) return;
+    if (keyCellEls.length === keyLength) return;
+
+    keyRow.innerHTML = "";
+    keyCellEls = [];
+    for (let i = 0; i < keyLength; i++) {
+      const cell = document.createElement("span");
+      cell.className = "key-cell";
+      cell.textContent = "·";
+      cell.dataset.state = "empty";
+      keyRow.appendChild(cell);
+      keyCellEls.push(cell);
+    }
+  }
+
+  function updateVigenereUI(data) {
+    const bars = data.iocBars ?? [];
+    ensureIocBars(bars);
+    const maxIoc = bars.reduce((m, b) => Math.max(m, b.ioc), 0) || 1;
+    for (let i = 0; i < bars.length; i++) {
+      const el = iocBarEls[i];
+      if (!el) continue;
+      const fill = el.firstElementChild;
+      const height = Math.max(2, Math.round((bars[i].ioc / maxIoc) * 100));
+      fill.style.height = `${height}%`;
+      el.dataset.state = bars[i].status;
+    }
+
+    const key = data.key ?? [];
+    if (key.length > 0) ensureKeyCells(key.length);
+
+    for (let i = 0; i < keyCellEls.length; i++) {
+      const cell = keyCellEls[i];
+      const ch = key[i];
+
+      if (ch === null || ch === undefined) {
+        cell.textContent = "·";
+        cell.dataset.state = "empty";
+        continue;
+      }
+
+      const previous = cell.textContent;
+      cell.textContent = ch;
+
+      if (data.phase === "SOLVED") {
+        cell.dataset.state = "locked";
+      } else if (data.phase === "REFINING" && previous !== ch) {
+        cell.dataset.state = "swapping";
+        cell.addEventListener("animationend", () => {
+          cell.dataset.state = "tentative";
+        }, { once: true });
+      } else {
+        cell.dataset.state = "tentative";
+      }
+    }
   }
 
   function teardownVigenereUI() {
