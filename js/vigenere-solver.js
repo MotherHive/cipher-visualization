@@ -42,14 +42,15 @@ function columnsFor(ciphertext, K) {
  * Returns 0 for strings shorter than 2 characters.
  */
 function indexOfCoincidence(text) {
-  const N = text.length;
-  if (N < 2) return 0;
   const counts = new Array(PRINTABLE_RANGE).fill(0);
+  let N = 0;
   for (const ch of text) {
     const code = ch.charCodeAt(0);
     if (code < PRINTABLE_START || code > PRINTABLE_END) continue;
     counts[code - PRINTABLE_START]++;
+    N++;
   }
+  if (N < 2) return 0;
   let sum = 0;
   for (const n of counts) sum += n * (n - 1);
   return sum / (N * (N - 1));
