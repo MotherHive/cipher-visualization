@@ -37,15 +37,26 @@ export function initAttackPanel(panel) {
   let currentPhase = "IDLE";
   let currentIteration = 0;
   let currentTotalIterations = 0;
+  let lastCiphertext = null;
+  let lastOptions = null;
+  let stepAccumulator = 0;
   const MAX_SCORE_POINTS = 240;
+  let sparklineResizeObserver = null;
 
-  function stepsPerFrame() {
+  function speedMultiplier() {
     const exp = Number.parseInt(speedSlider?.value ?? "2", 10);
     return Math.pow(10, Number.isNaN(exp) ? 2 : exp);
   }
 
+  function stepsPerFrame() {
+    // "1×" is the watchable preset — scale it to ~6 steps/sec so REFINING
+    // is visibly distinct on fast-converging ciphers (Caesar, Vigenère).
+    const m = speedMultiplier();
+    return m === 1 ? 0.1 : m;
+  }
+
   function updateSpeedLabel() {
-    if (speedValueLabel) speedValueLabel.textContent = `${stepsPerFrame()}×`;
+    if (speedValueLabel) speedValueLabel.textContent = `${speedMultiplier()}×`;
   }
 
   function updateIterLabel() {
@@ -270,13 +281,30 @@ export function initAttackPanel(panel) {
 
     ctx.clearRect(0, 0, w, h);
 
-    const history = scoreHistory.slice(-MAX_SCORE_POINTS);
-    if (history.length < 2) return;
+    const history = scoreHistory
+      .slice(-MAX_SCORE_POINTS)
+      .filter((entry) => Number.isFinite(entry.score));
+    if (history.length === 0) return;
 
     const scores = history.map((s) => s.score);
     const min = Math.min(...scores);
     const max = Math.max(...scores);
     const range = max - min || 1;
+    const xStep = history.length > 1 ? w / (history.length - 1) : 0;
+
+    const pointFor = (index) => ({
+      x: history.length > 1 ? index * xStep : w / 2,
+      y: h - ((scores[index] - min) / range) * (h - 8) - 4,
+    });
+
+    if (history.length === 1) {
+      const point = pointFor(0);
+      ctx.beginPath();
+      ctx.fillStyle = "#00e87a";
+      ctx.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
 
     // Green line
     ctx.beginPath();
@@ -285,11 +313,8 @@ export function initAttackPanel(panel) {
     ctx.shadowColor = "#00e87a40";
     ctx.shadowBlur = 4;
 
-    const xStep = w / Math.max(history.length - 1, 1);
-
     for (let i = 0; i < history.length; i++) {
-      const x = i * xStep;
-      const y = h - ((scores[i] - min) / range) * (h - 8) - 4;
+      const { x, y } = pointFor(i);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -300,13 +325,20 @@ export function initAttackPanel(panel) {
     ctx.fillStyle = "#ff4d4d";
     for (let i = 0; i < history.length; i++) {
       if (history[i].accepted === false) {
-        const x = i * xStep;
-        const y = h - ((scores[i] - min) / range) * (h - 8) - 4;
+        const { x, y } = pointFor(i);
         ctx.beginPath();
         ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
       }
     }
+  }
+
+  function attachSparklineResizeObserver() {
+    if (sparklineResizeObserver || typeof ResizeObserver !== "function") return;
+    sparklineResizeObserver = new ResizeObserver(() => {
+      if (!attackPanel.hidden) drawSparkline();
+    });
+    sparklineResizeObserver.observe(scoreCanvas);
   }
 
   // --- Grid highlighting ---
@@ -356,11 +388,13 @@ export function initAttackPanel(panel) {
       updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
     }
 
-    scoreHistory.push({ score: data.score, accepted: data.accepted });
+    if (Number.isFinite(data.score)) {
+      scoreHistory.push({ score: data.score, accepted: data.accepted });
+    }
     if (scoreHistory.length > MAX_SCORE_POINTS * 2) {
       scoreHistory = scoreHistory.slice(-MAX_SCORE_POINTS);
     }
-    scoreValue.textContent = Math.round(data.score);
+    scoreValue.textContent = Number.isFinite(data.score) ? String(Math.round(data.score)) : "n/a";
     drawSparkline();
 
     if (typeof data.iteration === "number") currentIteration = data.iteration;
@@ -384,19 +418,35 @@ export function initAttackPanel(panel) {
   function autoStep() {
     if (!playing || !iterator) return;
 
-    const stepsThisFrame = currentPhase === "REFINING" ? stepsPerFrame() : 1;
+    // At 1× every phase is throttled (ANALYZING/MAPPING/DECODING would otherwise
+    // blast at 60 steps/sec). At higher speeds only REFINING scales; setup phases
+    // stay at 1/frame so they don't artificially stall.
+    let stepsThisFrame;
+    if (speedMultiplier() === 1) {
+      stepAccumulator += stepsPerFrame();
+      stepsThisFrame = Math.floor(stepAccumulator);
+      stepAccumulator -= stepsThisFrame;
+    } else if (currentPhase === "REFINING") {
+      stepsThisFrame = stepsPerFrame();
+    } else {
+      stepsThisFrame = 1;
+    }
 
     // Run multiple solver steps per frame, only render the last one
     let lastStep = null;
     for (let i = 0; i < stepsThisFrame; i++) {
       const step = iterator.next();
+      if (step.done) break;
       lastStep = step;
-      if (step.done || step.value?.phase === "SOLVED") break;
+      if (step.value?.phase === "SOLVED" || step.value?.phase === "FAILED") break;
     }
 
     if (lastStep) {
       processStep(lastStep);
-      if (lastStep.done || lastStep.value?.phase === "SOLVED") return;
+      if (lastStep.value?.phase === "SOLVED" || lastStep.value?.phase === "FAILED") return;
+    } else if (stepsThisFrame > 0) {
+      stop();
+      return;
     }
 
     animFrameId = requestAnimationFrame(autoStep);
@@ -421,11 +471,13 @@ export function initAttackPanel(panel) {
 
   function stop() {
     pause();
-    playBtn.disabled = true;
     stepBtn.disabled = true;
+    // Leave playBtn enabled so it can restart the solver on the last ciphertext.
   }
 
-  function reset() {
+  function reset(options = {}) {
+    const { hide = true } = options;
+
     if (animFrameId) {
       cancelAnimationFrame(animFrameId);
       animFrameId = null;
@@ -436,14 +488,19 @@ export function initAttackPanel(panel) {
     currentPhase = "IDLE";
     currentIteration = 0;
     currentTotalIterations = 0;
+    lastCiphertext = null;
+    lastOptions = null;
+    stepAccumulator = 0;
     updateIterLabel();
     playBtn.innerHTML = "&#9654;";
     playBtn.disabled = false;
     stepBtn.disabled = true;
     stateLabel.style.color = "";
-    attackPanel.hidden = true;
+    if (hide) attackPanel.hidden = true;
     setState("IDLE");
     scoreValue.textContent = "0";
+    cipherRow.innerHTML = "";
+    plainRow.innerHTML = "";
 
     const ctx = scoreCanvas.getContext("2d");
     ctx.clearRect(0, 0, scoreCanvas.width, scoreCanvas.height);
@@ -458,6 +515,10 @@ export function initAttackPanel(panel) {
   }
 
   playBtn.addEventListener("click", () => {
+    if ((currentPhase === "SOLVED" || currentPhase === "FAILED") && lastCiphertext) {
+      startSolve(lastCiphertext, lastOptions ?? {});
+      return;
+    }
     if (playing) {
       pause();
     } else {
@@ -471,31 +532,46 @@ export function initAttackPanel(panel) {
     processStep(step);
   });
 
+  function startSolve(ciphertext, options = {}) {
+    panel._stopGridAnimation?.();
+    reset();
+    panel._showCiphertext?.({ animate: false, force: true });
+    // The solver will overwrite the grid DOM with decoded text as it runs, so
+    // the ciphertext-display cache is about to go stale — invalidate it now
+    // so a subsequent Encrypt click actually re-renders the grid.
+    panel._invalidateDisplayCache?.();
+    lastCiphertext = ciphertext;
+    lastOptions = options;
+    attackPanel.hidden = false;
+    attachSparklineResizeObserver();
+    requestAnimationFrame(() => {
+      if (!attackPanel.hidden) drawSparkline();
+    });
+
+    mode = options.cipherType === "vigenere" ? "vigenere" : "substitution";
+
+    if (mode === "vigenere") {
+      buildVigenereUI();
+      iterator = createVigenereSolverIterator(ciphertext);
+    } else {
+      buildMappingTable(ciphertext);
+      iterator = createSolverIterator(ciphertext, options);
+    }
+    stepBtn.disabled = false;
+    setState("ANALYZING");
+
+    const firstStep = iterator.next();
+    processStep(firstStep);
+
+    if (!firstStep.done && firstStep.value?.phase !== "SOLVED" && firstStep.value?.phase !== "FAILED") {
+      play();
+    }
+  }
+
   // --- Public API ---
 
   return {
-    startSolve(ciphertext, options = {}) {
-      panel._stopGridAnimation?.();
-      reset();
-      attackPanel.hidden = false;
-
-      mode = options.cipherType === "vigenere" ? "vigenere" : "substitution";
-
-      if (mode === "vigenere") {
-        buildVigenereUI();
-        iterator = createVigenereSolverIterator(ciphertext);
-      } else {
-        buildMappingTable(ciphertext);
-        iterator = createSolverIterator(ciphertext, options);
-      }
-      setState("ANALYZING");
-
-      const firstStep = iterator.next();
-      processStep(firstStep);
-      stepBtn.disabled = false;
-
-      play();
-    },
+    startSolve,
     reset,
   };
 }

@@ -623,6 +623,16 @@ function buildCaesarMapping(ciphertext, shift) {
 }
 
 function runGreedyPolish(ciphertext, startingMapping, cipherChars, scoreDecoded) {
+  if (cipherChars.length < 2) {
+    const mapping = { ...startingMapping };
+    const decoded = applyMapping(ciphertext, mapping);
+    return {
+      mapping,
+      decoded,
+      score: scoreDecoded(decoded),
+    };
+  }
+
   const mapping = { ...startingMapping };
   let decoded = applyMapping(ciphertext, mapping);
   let currentScore = scoreDecoded(decoded);
@@ -796,6 +806,22 @@ function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
   const cipherChars = Object.keys(counts)
     .sort((a, b) => counts[b] - counts[a])
     .slice(0, LETTERS_BY_FREQ.length);
+
+  if (cipherChars.length < 2) {
+    yield {
+      phase: 'SOLVED',
+      mapping: { ...mapping },
+      score: currentScore,
+      decoded,
+      accepted: null,
+      swappedPair: null,
+      iteration: globalIteration,
+      totalIterations,
+      caesar: false,
+    };
+    return;
+  }
+
   const NUM_ROUNDS = rounds;
   const MAX_NO_IMPROVE = 4500;
   const T_START = 20;

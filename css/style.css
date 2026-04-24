@@ -438,6 +438,7 @@ h6 { font-size: var(--text-base);}
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   overflow-y: auto;
+  min-width: 0;
 }
 
 .panel-heading {
@@ -451,6 +452,10 @@ h6 { font-size: var(--text-base);}
 
 .panel-matrix .panel-heading {
   margin-left: 10px;
+}
+
+.panel-matrix {
+  overflow-x: hidden;
 }
 
 .textarea-wrap {
@@ -578,8 +583,9 @@ h6 { font-size: var(--text-base);}
   grid-template-columns: repeat(16, 1fr);
   grid-template-rows: repeat(16, 1fr);
 
-  width: 412px;   /* optional but helps make it square */
-  height: 412px;  /* same as width = perfect square */
+  width: min(100%, 412px);
+  max-width: 412px;
+  aspect-ratio: 1 / 1;
 
   gap: 2px;
 
@@ -587,6 +593,7 @@ h6 { font-size: var(--text-base);}
   font-size: 16px;
 
   padding: 10px;
+  margin: 0 auto;
   background: #0f0f0f;
   color: #eaeaea;
 }

@@ -41,9 +41,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initCaesar(panel);
 
   const attackPanel = initAttackPanel(panel);
-  void loadScoringData();
+  const scoringDataReady = loadScoringData();
   inputText.addEventListener("input", () => attackPanel.reset());
-  encryptBtn.addEventListener("click", () => attackPanel.reset());
+  encryptBtn.addEventListener("click", () => attackPanel.reset({ hide: false }));
 
   function syncCipherControls() {
     const isCaesar = cipherSelect.value === "caesar";
@@ -68,11 +68,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return Math.min(parsed, 50);
   }
 
-  solveBtn.addEventListener("click", () => {
+  solveBtn.addEventListener("click", async () => {
     const ciphertext = panel._getCiphertext?.() ?? panel._getCurrentText?.();
     if (!ciphertext) return;
 
-    panel._showCiphertext?.({ animate: false, force: true });
+    await scoringDataReady;
     attackPanel.startSolve(ciphertext, {
       rounds: currentRounds(),
       cipherType: cipherSelect.value,

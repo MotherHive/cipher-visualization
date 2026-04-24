@@ -17,6 +17,7 @@ export function initCaesar(tab) {
 
     let lastEncrypted = null;
     let currentDisplayedText = inputText.value.slice(0, MAX_TEXT_LENGTH);
+    let lastHistogramText = null;
     let showingCiphertext = false;
     let revealFrameId = null;
     let revealRunId = 0;
@@ -146,7 +147,10 @@ export function initCaesar(tab) {
         const nextText = clampText(text);
         stopReveal();
         ensureGrid(nextText);
-        renderHistogram(nextText, freqChart);
+        if (nextText !== lastHistogramText) {
+            renderHistogram(nextText, freqChart);
+            lastHistogramText = nextText;
+        }
         currentDisplayedText = nextText;
 
         if (!animate) {
@@ -202,6 +206,12 @@ export function initCaesar(tab) {
     tab._getCurrentText = () => currentDisplayedText;
     tab._getCiphertext = getCiphertext;
     tab._showCiphertext = showCiphertext;
+    tab._invalidateDisplayCache = () => {
+        // Called when something external (the solver) overwrites the grid DOM.
+        // Clears the "already showing" short-circuit so the next show* call actually re-renders.
+        showingCiphertext = false;
+        lastEncrypted = null;
+    };
     tab._stopGridAnimation = () => {
         stopReveal();
         setGridText(currentDisplayedText);
