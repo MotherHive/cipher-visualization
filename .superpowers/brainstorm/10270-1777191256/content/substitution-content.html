@@ -1,0 +1,69 @@
+<h2>Section 3 of 4 — Substitution tab content</h2>
+<p class="subtitle">Same skeleton, more interesting attack story. Diagrams and prose are drafts.</p>
+
+<style>
+  .st-section { background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: 6px; margin-bottom: 1rem; }
+  .st-section h4 { margin: 0 0 0.5rem; color: var(--text); font-size: 1rem; }
+  .st-section p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; margin: 0.5rem 0; }
+  .map-table { font-family: var(--font-mono, monospace); font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.18em; }
+  .map-table .row1 { color: var(--text); }
+  .map-table .row2 { color: var(--accent); }
+  .keyspace-callout { font-family: var(--font-mono, monospace); font-size: 1.1rem; color: var(--text); padding: 0.75rem 1rem; background: var(--bg, #0a0a0a); border-left: 3px solid var(--accent); border-radius: 2px; }
+  .keyspace-callout .num { color: var(--accent); font-weight: 700; }
+  .keyspace-callout .small { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; letter-spacing: 0; }
+  .swap-row { display: grid; grid-template-columns: 1fr auto 1fr; gap: 1rem; align-items: center; font-family: var(--font-mono, monospace); font-size: 0.8rem; }
+  .swap-card { background: var(--bg, #0a0a0a); padding: 0.6rem 0.75rem; border-radius: 4px; border: 1px solid var(--border); }
+  .swap-card .label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+  .swap-card .text { color: var(--text); letter-spacing: 0.08em; }
+  .swap-card .score { color: var(--accent); margin-top: 0.4rem; font-size: 0.78rem; }
+  .swap-card.before .score { color: var(--danger, #ff4d4d); }
+  .arrow { color: var(--text-muted); }
+</style>
+
+<div class="st-section">
+  <h4>1 · What it is</h4>
+  <p><em>Prose draft:</em> A monoalphabetic substitution cipher replaces each letter with a fixed substitute — but unlike Caesar, the substitution is an arbitrary one-to-one mapping, not a shift. The key <em>is</em> the mapping: 26 plaintext letters paired with the 26 ciphertext letters in any order.</p>
+</div>
+
+<div class="st-section">
+  <h4>2 · How it works — the mapping</h4>
+  <p><em>Prose:</em> The key is the full alphabet permutation. To encrypt, look up each plaintext letter in the table and write down the ciphertext letter beneath it.</p>
+  <div class="map-table">
+    <div class="row1">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</div>
+    <div class="row2">Q W E R T Y U I O P A S D F G H J K L Z X C V B N M</div>
+  </div>
+  <p style="font-size: 0.8rem; margin-top: 0.5rem;">plaintext <code>HELLO</code> → ciphertext <code style="color: var(--accent)">ITSSG</code></p>
+</div>
+
+<div class="st-section">
+  <h4>3 · Why it's much stronger — the keyspace explodes</h4>
+  <p><em>Prose:</em> Caesar had 25 keys. Substitution has every reordering of 26 letters: 26 factorial.</p>
+  <div class="keyspace-callout">
+    26! = <span class="num">403,291,461,126,605,635,584,000,000</span>
+    <span class="small">≈ 4 × 10²⁶ keys — more than there are grains of sand on Earth. Brute force is not an option.</span>
+  </div>
+</div>
+
+<div class="st-section">
+  <h4>4 · How to crack it — frequency seed + hill climbing</h4>
+  <p><em>Prose:</em> Two ideas combine. <strong>Frequency analysis</strong> still helps: the most common ciphertext letter is probably E, the next probably T, and so on — that gives a rough starting mapping. Then <strong>hill climbing</strong> refines it: swap two letters in the mapping, score the resulting decryption against English using <em>quadgram</em> log-probabilities (a sum over every four-letter window), and keep the swap if the score went up. Repeat thousands of times. Simulated annealing occasionally accepts worse swaps to escape local optima.</p>
+  <div class="swap-row">
+    <div class="swap-card before">
+      <div class="label">BEFORE SWAP</div>
+      <div class="text">VHE QUOXK BROWN…</div>
+      <div class="score">score: −41.2</div>
+    </div>
+    <div class="arrow">swap H↔T →</div>
+    <div class="swap-card">
+      <div class="label">AFTER SWAP</div>
+      <div class="text">THE QUOXK BROWN…</div>
+      <div class="score">score: −36.7 ✓ keep</div>
+    </div>
+  </div>
+  <p style="font-size: 0.78rem; margin-top: 0.5rem; color: var(--text-dim)">Higher score = more English-like. Sum of log P(quadgram) over the text.</p>
+</div>
+
+<div class="st-section">
+  <h4>5 · Try it</h4>
+  <p>"Try it in the Crypto-solver →" button. Switches to the solver tab with cipher pre-set to Substitution.</p>
+</div>

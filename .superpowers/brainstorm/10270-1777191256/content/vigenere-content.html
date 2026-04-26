@@ -1,0 +1,80 @@
+<h2>Section 4 of 4 — Vigenère tab content</h2>
+<p class="subtitle">More structure: two-stage attack (key length, then per-column Caesar). One light formula (IC).</p>
+
+<style>
+  .vg-section { background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: 6px; margin-bottom: 1rem; }
+  .vg-section h4 { margin: 0 0 0.5rem; color: var(--text); font-size: 1rem; }
+  .vg-section p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; margin: 0.5rem 0; }
+  .tile { font-family: var(--font-mono, monospace); font-size: 0.95rem; letter-spacing: 0.25em; line-height: 1.7; }
+  .tile .key { color: var(--accent); }
+  .tile .pt { color: var(--text); }
+  .tile .ct { color: var(--info, #4d9fff); }
+  .formula { font-family: var(--font-mono, monospace); font-size: 0.95rem; padding: 0.75rem 1rem; background: var(--bg); border-left: 3px solid var(--accent); border-radius: 2px; color: var(--text); }
+  .formula .small { display: block; font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+  .ic-chart { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; font-family: var(--font-mono, monospace); font-size: 0.78rem; }
+  .ic-chart .lbl { color: var(--text-muted); }
+  .ic-bar { background: var(--text-dim, #303030); height: 8px; border-radius: 1px; }
+  .ic-bar.peak { background: var(--accent); }
+  .ic-val { color: var(--text); font-size: 0.74rem; }
+  .ic-val.peak { color: var(--accent); font-weight: 700; }
+  .columns-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; font-family: var(--font-mono, monospace); font-size: 0.78rem; }
+  .col-card { background: var(--bg); padding: 0.5rem; border-radius: 3px; border: 1px solid var(--border); }
+  .col-card .col-label { color: var(--accent); font-size: 0.7rem; margin-bottom: 0.3rem; }
+  .col-card .col-text { color: var(--text); letter-spacing: 0.1em; line-height: 1.5; }
+</style>
+
+<div class="vg-section">
+  <h4>1 · What it is</h4>
+  <p><em>Prose draft:</em> The Vigenère cipher uses a short repeating <em>keyword</em> instead of a single shift. Each plaintext letter is shifted by the corresponding key letter (A = shift 0, B = shift 1, …). Because the key cycles, the same plaintext letter encrypts to different cipher letters depending on its position. For three centuries it was considered "the unbreakable cipher."</p>
+</div>
+
+<div class="vg-section">
+  <h4>2 · How it works — tile the key</h4>
+  <p><em>Prose:</em> Write the key repeatedly above the plaintext, then add letter-by-letter (mod 26).</p>
+  <div class="tile">
+    <div><span class="lbl" style="color: var(--text-muted); font-size: 0.7rem;">KEY&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="key">L E M O N L E M O N L E</span></div>
+    <div><span class="lbl" style="color: var(--text-muted); font-size: 0.7rem;">PLAIN&nbsp;&nbsp;</span><span class="pt">A T T A C K A T D A W N</span></div>
+    <div><span class="lbl" style="color: var(--text-muted); font-size: 0.7rem;">CIPHER&nbsp;</span><span class="ct">L X F O P V E F R N H R</span></div>
+  </div>
+  <p style="font-size: 0.78rem; margin-top: 0.5rem; color: var(--text-dim)">The plaintext letter A becomes L, X, E, N, R — different ciphertexts depending on where it sits.</p>
+</div>
+
+<div class="vg-section">
+  <h4>3 · Why it's stronger — frequency analysis breaks</h4>
+  <p><em>Prose:</em> Because one plaintext letter maps to many ciphertext letters, the cipher's overall letter frequencies look flat — much closer to random than to English. A naive frequency attack finds nothing to align.</p>
+</div>
+
+<div class="vg-section">
+  <h4>4 · How to crack it — two stages</h4>
+  <p><em>Prose:</em> Find the <em>key length</em> first; once known, the cipher decomposes into independent Caesars and falls.</p>
+
+  <p style="margin-top: 1rem;"><strong style="color: var(--text);">Stage 1: Index of Coincidence.</strong> The IC measures how unevenly distributed the letters are. English text scores ~0.067; uniform random scores ~0.038. If we group every <em>k</em>-th cipher letter together (i.e. assume key length <em>k</em>), each group is a single Caesar shift of English when <em>k</em> is right — so its IC will be high. Try several <em>k</em>; the peak is the key length.</p>
+
+  <div class="formula">
+    IC = Σᵢ nᵢ(nᵢ−1) ⁄ N(N−1)
+    <span class="small">nᵢ = count of letter i; N = total letters in the group. Higher = more English-like.</span>
+  </div>
+
+  <div class="ic-chart" style="margin-top: 0.75rem;">
+    <span class="lbl">k = 2</span><div class="ic-bar" style="width: 35%"></div><span class="ic-val">0.041</span>
+    <span class="lbl">k = 3</span><div class="ic-bar" style="width: 40%"></div><span class="ic-val">0.043</span>
+    <span class="lbl">k = 4</span><div class="ic-bar" style="width: 38%"></div><span class="ic-val">0.042</span>
+    <span class="lbl">k = 5</span><div class="ic-bar peak" style="width: 90%"></div><span class="ic-val peak">0.066 ←</span>
+    <span class="lbl">k = 6</span><div class="ic-bar" style="width: 42%"></div><span class="ic-val">0.043</span>
+    <span class="lbl">k = 7</span><div class="ic-bar" style="width: 39%"></div><span class="ic-val">0.042</span>
+  </div>
+
+  <p style="margin-top: 1rem;"><strong style="color: var(--text);">Stage 2: split and solve.</strong> With key length 5, peel the ciphertext into 5 interleaved columns. Every letter in column 1 was shifted by the same key letter — so column 1 is just a Caesar cipher. Solve each column independently with frequency analysis. Re-interleave to recover the plaintext.</p>
+
+  <div class="columns-grid" style="margin-top: 0.5rem;">
+    <div class="col-card"><div class="col-label">COL 1 (key L)</div><div class="col-text">L V K H</div></div>
+    <div class="col-card"><div class="col-label">COL 2 (key E)</div><div class="col-text">X E R …</div></div>
+    <div class="col-card"><div class="col-label">COL 3 (key M)</div><div class="col-text">F F N …</div></div>
+    <div class="col-card"><div class="col-label">COL 4 (key O)</div><div class="col-text">O R …</div></div>
+  </div>
+</div>
+
+<div class="vg-section">
+  <h4>5 · Try it</h4>
+  <p>"Try it in the Crypto-solver →" button. Switches to the solver tab with cipher pre-set to Vigenère.</p>
+</div>

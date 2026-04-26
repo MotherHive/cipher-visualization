@@ -1,0 +1,46 @@
+<h2>Proposed structure for a cipher tab</h2>
+<p class="subtitle">Walk through Caesar as the template — Substitution and Vigenère would follow the same skeleton with their own content. Each numbered block is a scrollable section. <strong>Click any section you'd want to drop, or tell me what's missing.</strong></p>
+
+<div class="options" data-multiselect>
+
+  <div class="option" data-choice="intro" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Intro — what it is, in one paragraph</h3>
+      <p>"A Caesar cipher shifts every letter by a fixed amount." One worked example shown statically (HELLO → KHOOR with shift 3). No animation yet — just framing.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="encrypt-anim" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>How encryption works — animated shift wheel / strip</h3>
+      <p>Two stacked alphabet strips that slide against each other; click a button to set the shift, watch a sample word transform letter-by-letter. The "key point" picture for the cipher's mechanic.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="keyspace" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Why it's weak — the keyspace</h3>
+      <p>One sentence + small visual: "There are only 25 possible shifts. You can try them all by hand." A grid showing all 25 candidate decryptions of a short ciphertext.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="attack" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>How to crack it — frequency analysis (animated)</h3>
+      <p>The attack story: count letter frequencies in the ciphertext, line them up against English, the shift that matches wins. Small histogram animation showing the cipher histogram sliding into place over the English histogram.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="try-it" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>"Try it yourself" — link to the Crypto-solver tab</h3>
+      <p>Closing CTA: a button that switches to the Crypto-solver tab with cipher pre-set to Caesar. No embedded solver — the existing tab keeps full control, this is just the doorway.</p>
+    </div>
+  </div>
+
+</div>

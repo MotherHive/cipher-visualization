@@ -20,11 +20,14 @@
 
         <header id="site-header">
             <h1 class="site-title">Cipher Attacks</h1>
-            <span class="site-meta">CS 101 — Spring 2026</span>
+            <span class="site-meta">INSC 440 — Spring 2026</span>
         </header>
         
         <nav id="tab-nav" role="tablist">
             <button role="tab" data-tab="crypto-solver" class="tab-btn active">Crypto-solver</button>
+            <button role="tab" data-tab="topic-caesar" class="tab-btn">Caesar</button>
+            <button role="tab" data-tab="topic-substitution" class="tab-btn">Substitution</button>
+            <button role="tab" data-tab="topic-vigenere" class="tab-btn">Vigenère</button>
         </nav>
         
 
@@ -127,6 +130,233 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- TOPIC: CAESAR -->
+            <section id="topic-caesar" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">Caesar Cipher</h2>
+                        <p class="topic-tagline">Shift every letter by a fixed amount. The simplest cipher, the easiest to break.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>What it is</h3>
+                        <p>A Caesar cipher is the simplest substitution cipher: every letter in the message is shifted by the same fixed number of positions in the alphabet. With a shift of 3, <code>HELLO</code> becomes <code class="ct">KHOOR</code>. The Roman general Julius Caesar used a shift of 3 for his private correspondence — the trick is two thousand years old and trivial to break today.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>How it works</h3>
+                        <p>Lay two alphabets side by side and slide one against the other by the key. To encrypt, find your plaintext letter on the top row and read down. To decrypt, read up.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-strips" aria-label="Two alphabet strips offset by 3 positions">
+                                <div><span class="strip-label">PLAIN</span><span class="strip-plain">A B C D E <span class="hi">F</span> G H I J K L M N O P Q R S T U V W X Y Z</span></div>
+                                <div><span class="strip-label">CIPHER</span><span class="strip-cipher">D E F G H <span class="hi">I</span> J K L M N O P Q R S T U V W X Y Z A B C</span></div>
+                            </div>
+                            <div class="topic-figure-caption">plaintext F → ciphertext I &nbsp;·&nbsp; shift = 3</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>Why it's weak — only 25 useful shifts</h3>
+                        <p>The key is a single number from 1 to 25. There are so few possibilities that you can simply try every one of them and look for the row that reads as English.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-keyspace" aria-label="Trial decryptions of KHOOR for every shift">
+                                <span class="ks-shift">+1</span><span class="ks-text">JGNNQ</span>
+                                <span class="ks-shift">+2</span><span class="ks-text">IFMMP</span>
+                                <span class="ks-shift">+3</span><span class="ks-text winner">HELLO ←</span>
+                                <span class="ks-shift">+4</span><span class="ks-text">GDKKN</span>
+                                <span class="ks-shift">+5</span><span class="ks-text">FCJJM</span>
+                                <span class="ks-shift">+6</span><span class="ks-text">EBIIL</span>
+                                <span class="ks-shift">+7</span><span class="ks-text">DAHHK</span>
+                                <span class="ks-shift">…</span><span class="ks-text" style="color: var(--text-dim);">(18 more shifts, none readable)</span>
+                            </div>
+                            <div class="topic-figure-caption">trial decryptions of <code>KHOOR</code> — the readable row is the answer</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>How to crack it — frequency analysis</h3>
+                        <p>You don't even need to try all 25 shifts. English letter frequencies are very uneven — E and T dominate, Q and Z are rare. Count the letter frequencies in the ciphertext, line them up against the English distribution, and the shift that makes them match is the key.</p>
+                        <div class="topic-callout">
+                            score(s) = Σ (observed<sub>i</sub> − english<sub>i+s</sub>)<sup>2</sup>
+                            <span class="callout-gloss">A chi-squared score over the 26 letters. The shift <em>s</em> that minimises it wins.</span>
+                        </div>
+                        <div class="topic-figure">
+                            <div class="diagram-histos" aria-label="Side-by-side ciphertext and English letter frequency histograms">
+                                <div class="histo-block">
+                                    <div class="histo-label">CIPHERTEXT</div>
+                                    <div class="histo-row"><span class="letter">H</span><span class="bar" style="width: 100%;"></span></div>
+                                    <div class="histo-row"><span class="letter">W</span><span class="bar" style="width: 64%;"></span></div>
+                                    <div class="histo-row"><span class="letter">L</span><span class="bar" style="width: 56%;"></span></div>
+                                    <div class="histo-row"><span class="letter">D</span><span class="bar" style="width: 42%;"></span></div>
+                                    <div class="histo-row"><span class="letter">…</span><span class="bar" style="width: 24%;"></span></div>
+                                </div>
+                                <div class="histo-block english">
+                                    <div class="histo-label">ENGLISH</div>
+                                    <div class="histo-row"><span class="letter">E</span><span class="bar" style="width: 100%;"></span></div>
+                                    <div class="histo-row"><span class="letter">T</span><span class="bar" style="width: 64%;"></span></div>
+                                    <div class="histo-row"><span class="letter">A</span><span class="bar" style="width: 56%;"></span></div>
+                                    <div class="histo-row"><span class="letter">O</span><span class="bar" style="width: 42%;"></span></div>
+                                    <div class="histo-row"><span class="letter">…</span><span class="bar" style="width: 24%;"></span></div>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">cipher H aligns with English E ⇒ shift = 3</div>
+                        </div>
+                    </section>
+
+                    <div class="try-it-row">
+                        <button type="button" class="try-it-btn" data-cipher="caesar">Try it in the Crypto-solver →</button>
+                        <span class="try-it-note">Switches to the solver tab and pre-selects Caesar.</span>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TOPIC: SUBSTITUTION -->
+            <section id="topic-substitution" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">Substitution Cipher</h2>
+                        <p class="topic-tagline">Any one-to-one letter mapping. Astronomically more keys than Caesar — and still breakable.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>What it is</h3>
+                        <p>A monoalphabetic substitution cipher replaces each letter with a fixed substitute. Unlike Caesar — where every letter shifts by the same amount — the substitution can be any one-to-one mapping. The key <em>is</em> that mapping: 26 plaintext letters paired with the 26 ciphertext letters in any order.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>How it works</h3>
+                        <p>The key is the full alphabet permutation. To encrypt, look up each plaintext letter in the table and write down the ciphertext letter beneath it.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-mapping" aria-label="Substitution mapping table from plaintext to ciphertext">
+                                <div><span class="map-label">PLAIN</span><span class="map-plain">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</span></div>
+                                <div><span class="map-label">CIPHER</span><span class="map-cipher">Q W E R T Y U I O P A S D F G H J K L Z X C V B N M</span></div>
+                            </div>
+                            <div class="topic-figure-caption">plaintext <code>HELLO</code> → ciphertext <code class="ct">ITSSG</code></div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>Why it's much stronger — the keyspace</h3>
+                        <p>Caesar had 25 keys. Substitution has every reordering of 26 letters: 26 factorial.</p>
+                        <div class="topic-callout">
+                            26! = <span class="callout-num">403,291,461,126,605,635,584,000,000</span>
+                            <span class="callout-gloss">≈ 4 × 10²⁶ keys — more than the number of grains of sand on Earth. Brute force is not an option.</span>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>How to crack it — frequency seed plus hill climbing</h3>
+                        <p>Two ideas combine. <strong>Frequency analysis</strong> still helps: the most common ciphertext letter is probably E, the next probably T, and so on — that gives a rough starting mapping. Then <strong>hill climbing</strong> refines it: swap two letters in the mapping, score the resulting decryption against English using <em>quadgram</em> log-probabilities (a sum over every four-letter window), and keep the swap if the score went up. Repeat thousands of times. Simulated annealing occasionally accepts worse swaps to escape local optima.</p>
+                        <div class="topic-callout">
+                            score = Σ log P(quadgram)
+                            <span class="callout-gloss">Higher score means more English-like. The solver picks swaps that move the score upward.</span>
+                        </div>
+                        <div class="topic-figure">
+                            <div class="diagram-swap" aria-label="Before and after swapping H and T in the mapping">
+                                <div class="swap-card before">
+                                    <span class="swap-label">BEFORE SWAP</span>
+                                    <span class="swap-text">VHE QUOXK BROWN</span>
+                                    <span class="swap-score">score: −41.2</span>
+                                </div>
+                                <div class="swap-arrow">swap H↔T →</div>
+                                <div class="swap-card">
+                                    <span class="swap-label">AFTER SWAP</span>
+                                    <span class="swap-text">THE QUOXK BROWN</span>
+                                    <span class="swap-score">score: −36.7  ✓ keep</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">one swap accepted — repeat thousands of times until the score stops improving</div>
+                        </div>
+                    </section>
+
+                    <div class="try-it-row">
+                        <button type="button" class="try-it-btn" data-cipher="substitution">Try it in the Crypto-solver →</button>
+                        <span class="try-it-note">Switches to the solver tab and pre-selects Substitution.</span>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TOPIC: VIGENÈRE -->
+            <section id="topic-vigenere" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">Vigenère Cipher</h2>
+                        <p class="topic-tagline">A repeating keyword turns a single shift into many. "Unbreakable" for three centuries — until it wasn't.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>What it is</h3>
+                        <p>The Vigenère cipher uses a short repeating <em>keyword</em> instead of a single shift. Each plaintext letter is shifted by the corresponding key letter (A = shift 0, B = shift 1, …). Because the key cycles, the same plaintext letter encrypts to different cipher letters depending on its position. For three centuries it was considered "the unbreakable cipher."</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>How it works</h3>
+                        <p>Write the key repeatedly above the plaintext, then add letter-by-letter (mod 26).</p>
+                        <div class="topic-figure">
+                            <div class="diagram-tile" aria-label="Vigenère encryption with key LEMON over the plaintext ATTACKATDAWN">
+                                <div><span class="tile-label">KEY</span><span class="tile-key">L E M O N L E M O N L E</span></div>
+                                <div><span class="tile-label">PLAIN</span><span class="tile-plain">A T T A C K A T D A W N</span></div>
+                                <div><span class="tile-label">CIPHER</span><span class="tile-cipher">L X F O P V E F R N H R</span></div>
+                            </div>
+                            <div class="topic-figure-caption">the plaintext letter A becomes L, X, E, N, R — different ciphertexts depending on position</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>Why it's stronger — frequency analysis breaks</h3>
+                        <p>Because one plaintext letter maps to many ciphertext letters, the cipher's overall letter frequencies look almost flat — much closer to random than to English. A naive frequency attack finds nothing to align.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>How to crack it — two stages</h3>
+                        <p>Find the <em>key length</em> first; once known, the cipher decomposes into independent Caesars and falls.</p>
+
+                        <p><strong>Stage 1: Index of Coincidence.</strong> The IC measures how unevenly distributed the letters are. English text scores ~0.067; uniform random scores ~0.038. Group every <em>k</em>-th cipher letter together (i.e. assume key length <em>k</em>); each group is a single Caesar shift of English when <em>k</em> is right, so its IC will be high. Try several values of <em>k</em>; the peak is the key length.</p>
+
+                        <div class="topic-callout">
+                            IC = Σ nᵢ(nᵢ − 1) ⁄ N(N − 1)
+                            <span class="callout-gloss">nᵢ = count of letter i in the group; N = total letters. Higher = more English-like.</span>
+                        </div>
+
+                        <div class="topic-figure">
+                            <div class="diagram-ic" aria-label="Index of Coincidence scores for candidate key lengths 2 through 7">
+                                <span class="ic-label">k = 2</span><div class="ic-bar-track"><div class="ic-bar" style="width: 35%;"></div></div><span class="ic-val">0.041</span>
+                                <span class="ic-label">k = 3</span><div class="ic-bar-track"><div class="ic-bar" style="width: 40%;"></div></div><span class="ic-val">0.043</span>
+                                <span class="ic-label">k = 4</span><div class="ic-bar-track"><div class="ic-bar" style="width: 38%;"></div></div><span class="ic-val">0.042</span>
+                                <span class="ic-label">k = 5</span><div class="ic-bar-track"><div class="ic-bar peak" style="width: 90%;"></div></div><span class="ic-val peak">0.066 ←</span>
+                                <span class="ic-label">k = 6</span><div class="ic-bar-track"><div class="ic-bar" style="width: 42%;"></div></div><span class="ic-val">0.043</span>
+                                <span class="ic-label">k = 7</span><div class="ic-bar-track"><div class="ic-bar" style="width: 39%;"></div></div><span class="ic-val">0.042</span>
+                            </div>
+                            <div class="topic-figure-caption">k = 5 stands out — that's the key length</div>
+                        </div>
+
+                        <p><strong>Stage 2: split and solve.</strong> With the key length known, peel the ciphertext into <em>k</em> interleaved columns. Every letter in column 1 was shifted by the same key letter — so column 1 is just a Caesar cipher. Solve each column independently with frequency analysis; re-interleave to recover the plaintext.</p>
+
+                        <div class="topic-figure">
+                            <div class="diagram-columns" aria-label="The ciphertext split into 5 columns by position modulo the key length">
+                                <div class="col-card"><span class="col-label">COL 1 · key L</span><span class="col-text">L V K H</span></div>
+                                <div class="col-card"><span class="col-label">COL 2 · key E</span><span class="col-text">X E R</span></div>
+                                <div class="col-card"><span class="col-label">COL 3 · key M</span><span class="col-text">F F N</span></div>
+                                <div class="col-card"><span class="col-label">COL 4 · key O</span><span class="col-text">O R</span></div>
+                                <div class="col-card"><span class="col-label">COL 5 · key N</span><span class="col-text">P N H</span></div>
+                            </div>
+                            <div class="topic-figure-caption">five tiny Caesar problems — each falls to frequency analysis</div>
+                        </div>
+                    </section>
+
+                    <div class="try-it-row">
+                        <button type="button" class="try-it-btn" data-cipher="vigenere">Try it in the Crypto-solver →</button>
+                        <span class="try-it-note">Switches to the solver tab and pre-selects Vigenère.</span>
+                    </div>
+
+                </div>
             </section>
 
         </main>

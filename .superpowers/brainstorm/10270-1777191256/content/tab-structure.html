@@ -1,0 +1,31 @@
+<h2>How should the tabs be organized?</h2>
+<p class="subtitle">You've got 3 ciphers and 3 cracking methods. There are a few ways to split them across tabs.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>One tab per cipher (cipher + its attack together)</h3>
+      <p><strong>Tabs:</strong> Crypto-solver · Caesar · Substitution · Vigenère</p>
+      <p>Each cipher tab explains how the cipher works <em>and</em> the cracking method that breaks it. The math (frequency analysis, hill climbing, IC) lives where it's first useful. Good for presenting linearly.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Ciphers and attacks as separate tabs</h3>
+      <p><strong>Tabs:</strong> Crypto-solver · Caesar · Substitution · Vigenère · Frequency Analysis · Hill Climbing · Index of Coincidence</p>
+      <p>Cleaner conceptual split — the attacks become reusable concepts. More tabs to manage, and you'll repeat yourself when one attack applies to two ciphers.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Two top-level sections: "Ciphers" and "Attacks"</h3>
+      <p><strong>Tabs:</strong> Crypto-solver · Ciphers · Attacks</p>
+      <p>Two tabs each containing sub-pages or an accordion. Compact nav bar, but adds a layer of clicking and a small navigation system to build.</p>
+    </div>
+  </div>
+</div>

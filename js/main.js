@@ -3,8 +3,11 @@ import { randomKey } from "./keys.js";
 import { randomPlaintext } from "./plaintext.js";
 import { initAttackPanel } from "./attack-panel.js";
 import { DEFAULT_ROUNDS, loadScoringData } from "./solver.js";
+import { initTopicTabs } from "./topic-tabs.js";
 
 document.addEventListener("DOMContentLoaded", () => {
+  initTopicTabs();
+
   const panel = document.getElementById("crypto-solver");
   const cipherSelect = panel.querySelector(".cipher-select");
   const keyInput = panel.querySelector(".key-input");

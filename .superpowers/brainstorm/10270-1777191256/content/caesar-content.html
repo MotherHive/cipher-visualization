@@ -1,0 +1,76 @@
+<h2>Section 2 of 4 — Caesar tab content</h2>
+<p class="subtitle">Diagrams sketched in the existing palette. Prose is a placeholder draft — you'll edit later. Click any diagram to flag it for revision, or comment in the terminal.</p>
+
+<style>
+  .ct-section { background: var(--bg-elevated); padding: 1.25rem 1.5rem; border-radius: 6px; margin-bottom: 1rem; }
+  .ct-section h4 { margin: 0 0 0.5rem; color: var(--text); font-size: 1rem; }
+  .ct-section p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; margin: 0.5rem 0; }
+  .strips { font-family: var(--font-mono, monospace); font-size: 0.85rem; line-height: 1.6; letter-spacing: 0.15em; }
+  .strips .row1 { color: var(--text); }
+  .strips .row2 { color: var(--accent, #00e87a); }
+  .strips .hi { background: var(--accent-dim, #00e87a18); padding: 0 2px; border-radius: 2px; }
+  .keyspace-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-family: var(--font-mono, monospace); font-size: 0.78rem; }
+  .keyspace-grid .shift { color: var(--text-muted); }
+  .keyspace-grid .text { color: var(--text); letter-spacing: 0.1em; }
+  .keyspace-grid .winner { color: var(--accent); font-weight: 700; }
+  .histos { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .histos .h-block { font-family: var(--font-mono, monospace); font-size: 0.7rem; }
+  .histos .h-block .label { font-size: 0.7rem; }
+  .bar { display: inline-block; background: var(--accent); height: 6px; border-radius: 1px; vertical-align: middle; margin-right: 4px; }
+  .bar-en { background: var(--info, #4d9fff); }
+</style>
+
+<div class="ct-section">
+  <h4>1 · What it is</h4>
+  <p><em>Prose draft:</em> A Caesar cipher is the simplest substitution cipher: every letter in the message is shifted by the same fixed number of positions in the alphabet. With a shift of 3, <code>HELLO</code> becomes <code>KHOOR</code>. Roman general Julius Caesar used a shift of 3 for his private correspondence — the trick is two thousand years old and trivial to break today.</p>
+</div>
+
+<div class="ct-section">
+  <h4>2 · How it works — alphabet strips diagram</h4>
+  <p><em>Prose:</em> Lay two alphabets side by side and slide one against the other by the key. To encrypt, find your plaintext letter on top and read down. To decrypt, read up.</p>
+  <div class="strips">
+    <div class="row1">A B C D E <span class="hi">F</span> G H I J K L M N O P Q R S T U V W X Y Z</div>
+    <div class="row2">D E F G H <span class="hi">I</span> J K L M N O P Q R S T U V W X Y Z A B C</div>
+  </div>
+  <p style="font-size: 0.8rem; margin-top: 0.5rem;"><span style="color: var(--text)">plaintext F</span> &nbsp;→&nbsp; <span style="color: var(--accent)">ciphertext I</span> &nbsp; (shift = 3)</p>
+</div>
+
+<div class="ct-section">
+  <h4>3 · Why it's weak — only 25 useful shifts</h4>
+  <p><em>Prose:</em> The key is a single number from 1 to 25. You can simply try every one and read down the column for the one that looks like English.</p>
+  <div class="keyspace-grid">
+    <span class="shift">+1</span><span class="text">JGNNQ</span>
+    <span class="shift">+2</span><span class="text">IFMMP</span>
+    <span class="shift">+3</span><span class="text winner">HELLO ←</span>
+    <span class="shift">+4</span><span class="text">GDKKN</span>
+    <span class="shift">+5</span><span class="text">FCJJM</span>
+    <span class="shift">…</span><span class="text" style="color: var(--text-dim)">(20 more rows)</span>
+  </div>
+</div>
+
+<div class="ct-section">
+  <h4>4 · How to crack it — frequency analysis</h4>
+  <p><em>Prose:</em> Even without trying all 25, the math gives you a shortcut. Letter frequencies in English are very uneven — E and T dominate. Count letter frequencies in the ciphertext, line them up against English, and the shift that makes them match is the key. Light formula: a chi-squared score over the 26 letters; minimum wins.</p>
+  <div class="histos">
+    <div class="h-block">
+      <div class="label">CIPHERTEXT</div>
+      <div><span class="bar" style="width: 60px"></span>H</div>
+      <div><span class="bar" style="width: 38px"></span>W</div>
+      <div><span class="bar" style="width: 32px"></span>L</div>
+      <div><span class="bar" style="width: 18px"></span>…</div>
+    </div>
+    <div class="h-block">
+      <div class="label">ENGLISH</div>
+      <div><span class="bar bar-en" style="width: 60px"></span>E</div>
+      <div><span class="bar bar-en" style="width: 38px"></span>T</div>
+      <div><span class="bar bar-en" style="width: 32px"></span>A</div>
+      <div><span class="bar bar-en" style="width: 18px"></span>…</div>
+    </div>
+  </div>
+  <p style="font-size: 0.78rem; margin-top: 0.5rem; color: var(--text-dim)">H aligns with E ⇒ shift = 3</p>
+</div>
+
+<div class="ct-section">
+  <h4>5 · Try it</h4>
+  <p>"Try it in the Crypto-solver →" button. Switches to the solver tab with cipher pre-set to Caesar.</p>
+</div>

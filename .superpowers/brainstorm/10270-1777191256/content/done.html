@@ -1,0 +1,17 @@
+<h2>Step 1 ready for review</h2>
+<p class="subtitle">Caesar tab + tab switching + "Try it" wiring is in place. Open <a href="http://localhost:8765" target="_blank" style="color: var(--accent);"><strong>http://localhost:8765</strong></a> to walk through it.</p>
+
+<div class="section">
+  <h3>What to check</h3>
+  <ul style="list-style: disc; padding-left: 1.5rem; line-height: 1.8;">
+    <li>Click between <strong>Crypto-solver</strong> and <strong>Caesar</strong> tabs — the active underline moves and only one panel is visible at a time.</li>
+    <li>The Caesar page reads cleanly: 5 sections, 3 diagrams (alphabet strips, keyspace grid, side-by-side histograms), one chi-squared callout.</li>
+    <li>Click the <strong>"Try it in the Crypto-solver →"</strong> button at the bottom of Caesar. It should: switch to the Crypto-solver tab, set the cipher dropdown to Caesar, and regenerate a random key.</li>
+    <li>The existing Crypto-solver still works — encrypt and solve are unchanged.</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>What's next if this looks good</h3>
+  <p>Step 2 (Substitution tab) and step 3 (Vigenère tab) reuse the same skeleton. They each add their own diagrams and prose only — no further infrastructure changes.</p>
+</div>
