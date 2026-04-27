@@ -37,7 +37,11 @@ export function randomKey(cipherType) {
       const transLen = 3 + Math.floor(Math.random() * 4); // 3–6 chars
       let transKey = "";
       for (let i = 0; i < transLen; i++) {
-        transKey += String.fromCharCode(PRINTABLE_START + Math.floor(Math.random() * PRINTABLE_RANGE));
+        let ch;
+        do {
+          ch = String.fromCharCode(PRINTABLE_START + Math.floor(Math.random() * PRINTABLE_RANGE));
+        } while (ch === "|"); // "|" is the trans/subst separator in the combined key
+        transKey += ch;
       }
       let subKey = SUBSTITUTION_ALPHABET;
       while (subKey === SUBSTITUTION_ALPHABET) {

@@ -33,6 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cipherSelect = panel.querySelector(".cipher-select");
   const keyInput = panel.querySelector(".key-input");
   const cipherInfoBtn = panel.querySelector(".cipher-info-btn");
+  const cipherInfoTooltip = panel.querySelector(".cipher-info-tooltip");
   const randomizeBtn = panel.querySelector(".randomize-btn");
   const inputText = panel.querySelector(".input-text");
   const randomTextBtn = panel.querySelector(".random-text-btn");
@@ -74,8 +75,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const info = CIPHER_INFO[cipher];
     if (cipherInfoBtn) {
       cipherInfoBtn.hidden = !info;
-      cipherInfoBtn.dataset.tooltip = info?.title ?? "";
       cipherInfoBtn.setAttribute("aria-label", info?.label ?? "Cipher implementation note");
+    }
+    if (cipherInfoTooltip) {
+      cipherInfoTooltip.textContent = info?.title ?? "";
     }
     solveBtn.disabled = false;
     solveBtn.title = "";

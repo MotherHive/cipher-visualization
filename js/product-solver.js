@@ -33,7 +33,10 @@ import { columnarDecryptByOrder } from "./transposition.js";
 
 const MIN_WIDTH = 3;
 const MAX_WIDTH_CAP = 6;
-const TOP_TRANS_CANDIDATES = 4;
+// Commit to the entropy winner. Bigram entropy is substitution-invariant and
+// reliably ranks widths; running subst on runners-up just gives noisy scoreText
+// values a chance to overrule the trans phase on short inputs.
+const TOP_TRANS_CANDIDATES = 1;
 
 // ANALYZING: trans-only SA hill-climb per width, scored by bigram entropy.
 const ANALYZING_TRANS_RESTARTS = 5;
@@ -179,10 +182,14 @@ function makeDecodedCandidate({ decoded, mapping, width, order, score = scoreTex
 }
 
 function compareDecodedCandidates(a, b) {
+  // Coverage-primary: scoreText scales by letter count, so the unmapped half
+  // (mostly punctuation, few letters) can outscore a partially-decoded English
+  // result. Coverage measures English-bigram/trigram presence and is unbiased
+  // by length here.
+  if (a.coverage !== b.coverage) return a.coverage - b.coverage;
   const scoreA = Number.isFinite(a.score) ? a.score : -Infinity;
   const scoreB = Number.isFinite(b.score) ? b.score : -Infinity;
-  if (scoreA !== scoreB) return scoreA - scoreB;
-  return a.coverage - b.coverage;
+  return scoreA - scoreB;
 }
 
 function pickBetterCandidate(currentBest, nextCandidate) {
@@ -451,21 +458,9 @@ export function* createProductSolverIterator(ciphertext, { rounds = DEFAULT_ROUN
   }
   globalIter = iterRef.value;
 
-  // ----- RAW CANDIDATE GATE -----
+  // ----- REFINING_SUBST -----
 
   const consideredCandidates = [];
-  for (const candidate of refinedCandidates) {
-    const rawDecoded = candidate.halfDecoded;
-    const rawCandidate = makeDecodedCandidate({
-      decoded: rawDecoded,
-      mapping: buildIdentityMapping(rawDecoded),
-      width: candidate.width,
-      order: candidate.order,
-    });
-    consideredCandidates.push(rawCandidate);
-  }
-
-  // ----- REFINING_SUBST -----
 
   for (const candidate of refinedCandidates) {
     setWidthBarStates(widthBars, candidate.width, candidateWidths);

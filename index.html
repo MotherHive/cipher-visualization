@@ -47,10 +47,13 @@
                                 <button
                                     type="button"
                                     class="cipher-info-btn"
-                                    data-tooltip="This demo uses a printable-ASCII Caesar shift, not the classic A-Z-only version."
                                     aria-label="Cipher implementation note"
+                                    aria-describedby="cipher-info-tooltip"
                                     hidden
-                                >i</button>
+                                >
+                                    <span aria-hidden="true">i</span>
+                                </button>
+                                <span id="cipher-info-tooltip" class="cipher-info-tooltip" role="tooltip"></span>
                             </div>
                             <select id="cipher-select" class="cipher-select">
                                 <option value="caesar">Caesar</option>

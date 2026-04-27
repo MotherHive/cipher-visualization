@@ -11,6 +11,7 @@ const EXCLUDED_SELECTOR = [
   ".frequency-chart",
   ".topic-tab p",
   ".topic-tab button",
+  ".topic-rail",
   ".topic-tab .topic-figure",
   ".topic-tab [class^=\"diagram-\"]",
   ".topic-tab [class*=\" diagram-\"]",
