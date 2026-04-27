@@ -221,19 +221,6 @@ function scoreColumnEnglishness(text) {
  * Brute-force all 95 shifts on `column` and return the one whose decoded output
  * best matches English prose character frequencies (full 95-char chi-squared).
  */
-function bestShiftForColumn(column) {
-  let bestShift = 0;
-  let bestScore = -Infinity;
-  for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
-    const score = scoreColumnEnglishness(decodeColumn(column, shift));
-    if (score > bestScore) {
-      bestScore = score;
-      bestShift = shift;
-    }
-  }
-  return bestShift;
-}
-
 /**
  * Fraction of character positions that are part of a recognized English
  * bigram or trigram (via findEnglishSpans). Used as a threshold-free-ish
@@ -284,7 +271,7 @@ function* createVigenereSolverIterator(ciphertext) {
 
   // Phase B — DECODING (per-column Caesar on each candidate key length)
   const candidates = buildCandidateLengths(iocBars);
-  const totalDecodeIterations = candidates.reduce((sum, K) => sum + K, 0);
+  const totalDecodeIterations = candidates.reduce((sum, K) => sum + K * PRINTABLE_RANGE, 0);
   let decodingIter = 0;
   let best = null; // { K, key, decoded, score }
 
@@ -292,25 +279,40 @@ function* createVigenereSolverIterator(ciphertext) {
     const cols = columnsFor(ciphertext, K);
     const shifts = [];
     for (let c = 0; c < K; c++) {
-      const shift = bestShiftForColumn(cols[c]);
-      shifts.push(shift);
-      const partialKey = shifts.concat(new Array(K - shifts.length).fill(null));
-      const partialDecoded = decodeWithKey(ciphertext, shifts.concat(new Array(K - shifts.length).fill(0)));
-      const partialScore = scoreText(partialDecoded);
-      decodingIter++;
+      let bestShift = 0;
+      let bestColumnScore = -Infinity;
+      for (let shift = 0; shift < PRINTABLE_RANGE; shift++) {
+        const columnScore = scoreColumnEnglishness(decodeColumn(cols[c], shift));
+        const accepted = columnScore > bestColumnScore;
+        if (columnScore > bestColumnScore) {
+          bestColumnScore = columnScore;
+          bestShift = shift;
+        }
 
-      yield {
-        phase: "DECODING",
-        score: partialScore,
-        decoded: partialDecoded,
-        iteration: decodingIter,
-        totalIterations: totalDecodeIterations,
-        iocBars: iocBars.map((b) => ({
-          ...b,
-          status: b.length === K ? "computing" : b.status,
-        })),
-        key: partialKey.map((s) => (s === null ? null : shiftToChar(s))),
-      };
+        const trialKey = shifts
+          .concat([shift])
+          .concat(new Array(K - shifts.length - 1).fill(0));
+        const partialDecoded = decodeWithKey(ciphertext, trialKey);
+        decodingIter++;
+
+        yield {
+          phase: "DECODING",
+          score: columnScore,
+          decoded: partialDecoded,
+          iteration: decodingIter,
+          totalIterations: totalDecodeIterations,
+          iocBars: iocBars.map((b) => ({
+            ...b,
+            status: b.length === K ? "computing" : b.status,
+          })),
+          key: shifts
+            .concat([shift])
+            .concat(new Array(K - shifts.length - 1).fill(null))
+            .map((s) => (s === null ? null : shiftToChar(s))),
+          accepted,
+        };
+      }
+      shifts.push(bestShift);
     }
 
     const decoded = decodeWithKey(ciphertext, shifts);

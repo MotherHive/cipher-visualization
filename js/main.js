@@ -4,9 +4,30 @@ import { randomPlaintext } from "./plaintext.js";
 import { initAttackPanel } from "./attack-panel.js";
 import { DEFAULT_ROUNDS, loadScoringData } from "./solver.js";
 import { initTopicTabs } from "./topic-tabs.js";
+import { initAmbientText } from "./ambient-text.js";
+
+const CIPHER_INFO = {
+  caesar: {
+    label: "Caesar implementation note",
+    title: "This demo uses a printable-ASCII Caesar shift, not the classic A-Z-only version, so spaces and punctuation move too.",
+  },
+  substitution: {
+    label: "Substitution implementation note",
+    title: "This demo substitutes across all printable ASCII characters instead of just A-Z, and lowercase letters are normalized to uppercase before substitution.",
+  },
+  vigenere: {
+    label: "Vigenere implementation note",
+    title: "This demo runs Vigenere over printable ASCII rather than A-Z, so spaces and punctuation participate in the repeating-key shifts.",
+  },
+  product: {
+    label: "Product implementation note",
+    title: "This demo's product cipher is a toy construction: one columnar transposition followed by one printable-ASCII substitution layer, not a full modern block cipher.",
+  },
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   initTopicTabs();
+  initAmbientText();
 
   const panel = document.getElementById("crypto-solver");
   const cipherSelect = panel.querySelector(".cipher-select");
@@ -49,8 +70,13 @@ document.addEventListener("DOMContentLoaded", () => {
   encryptBtn.addEventListener("click", () => attackPanel.reset({ hide: false }));
 
   function syncCipherControls() {
-    const isCaesar = cipherSelect.value === "caesar";
-    if (cipherInfoBtn) cipherInfoBtn.hidden = !isCaesar;
+    const cipher = cipherSelect.value;
+    const info = CIPHER_INFO[cipher];
+    if (cipherInfoBtn) {
+      cipherInfoBtn.hidden = !info;
+      cipherInfoBtn.dataset.tooltip = info?.title ?? "";
+      cipherInfoBtn.setAttribute("aria-label", info?.label ?? "Cipher implementation note");
+    }
     solveBtn.disabled = false;
     solveBtn.title = "";
     encryptBtn.title = "";

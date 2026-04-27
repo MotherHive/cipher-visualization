@@ -19,15 +19,17 @@
     <div id="app">
 
         <header id="site-header">
-            <h1 class="site-title">Cipher Attacks</h1>
+            <h1 class="site-title">CRACKED-AT-CRACKING</h1>
             <span class="site-meta">INSC 440 — Spring 2026</span>
         </header>
         
         <nav id="tab-nav" role="tablist">
             <button role="tab" data-tab="crypto-solver" class="tab-btn active">Crypto-solver</button>
+            <button role="tab" data-tab="topic-overview" class="tab-btn">Overview</button>
             <button role="tab" data-tab="topic-caesar" class="tab-btn">Caesar</button>
             <button role="tab" data-tab="topic-substitution" class="tab-btn">Substitution</button>
             <button role="tab" data-tab="topic-vigenere" class="tab-btn">Vigenère</button>
+            <button role="tab" data-tab="topic-product" class="tab-btn">Product</button>
         </nav>
         
 
@@ -45,8 +47,8 @@
                                 <button
                                     type="button"
                                     class="cipher-info-btn"
-                                    title="Caesar shifts every printable ASCII character, including spaces and punctuation."
-                                    aria-label="Caesar info"
+                                    data-tooltip="This demo uses a printable-ASCII Caesar shift, not the classic A-Z-only version."
+                                    aria-label="Cipher implementation note"
                                     hidden
                                 >i</button>
                             </div>
@@ -54,6 +56,7 @@
                                 <option value="caesar">Caesar</option>
                                 <option value="substitution">Substitution</option>
                                 <option value="vigenere">Vigenère</option>
+                                <option value="product">Product</option>
                             </select>
                         </div>
 
@@ -132,6 +135,153 @@
 
             </section>
 
+            <!-- TOPIC: OVERVIEW -->
+            <section id="topic-overview" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">What Makes a Cipher Strong</h2>
+                        <p class="topic-tagline">Four ideas that show up in every cipher in this app — and in every modern one.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">0</span>Two basic moves</h3>
+                        <p>Almost every classical cipher does some combination of two things: <strong>substitute</strong> the characters (replace each one with something else) and <strong>rearrange</strong> them (move them around). Caesar and substitution only substitute. Columnar transposition only rearranges. Vigenère and the product cipher do both. The four ideas below explain <em>why</em> each move helps — and where each one stops helping on its own.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>Substitution helps hide letter frequencies</h3>
+                        <p>English has a very uneven letter distribution — E and T dominate, Q and Z are rare. A <em>fixed</em> substitution doesn't actually hide that shape: it just relabels the bars. The same spike is still there, under a different name, and frequency analysis lines it up against English in seconds.</p>
+                        <p>What does hide it is a substitution that <em>varies</em> across the message: the same plaintext letter gets a different ciphertext letter at different positions. No single ciphertext letter accumulates the weight of all the plaintext E's, and the histogram flattens out toward random.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-freq-shapes" aria-label="Letter frequencies under no cipher, fixed substitution, and varying substitution">
+                                <div class="fs-block">
+                                    <div class="fs-label">PLAIN ENGLISH</div>
+                                    <div class="fs-row"><span class="fs-letter">E</span><span class="fs-bar" style="width:100%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">T</span><span class="fs-bar" style="width:72%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">A</span><span class="fs-bar" style="width:60%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">O</span><span class="fs-bar" style="width:55%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">I</span><span class="fs-bar" style="width:50%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">…</span><span class="fs-bar" style="width:18%"></span></div>
+                                </div>
+                                <div class="fs-block">
+                                    <div class="fs-label">FIXED SUB</div>
+                                    <div class="fs-row"><span class="fs-letter">H</span><span class="fs-bar" style="width:100%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">W</span><span class="fs-bar" style="width:72%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">D</span><span class="fs-bar" style="width:60%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">R</span><span class="fs-bar" style="width:55%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">L</span><span class="fs-bar" style="width:50%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">…</span><span class="fs-bar" style="width:18%"></span></div>
+                                </div>
+                                <div class="fs-block fs-flat">
+                                    <div class="fs-label">VARYING SUB</div>
+                                    <div class="fs-row"><span class="fs-letter">H</span><span class="fs-bar" style="width:48%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">P</span><span class="fs-bar" style="width:44%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">L</span><span class="fs-bar" style="width:42%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">X</span><span class="fs-bar" style="width:40%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">A</span><span class="fs-bar" style="width:38%"></span></div>
+                                    <div class="fs-row"><span class="fs-letter">…</span><span class="fs-bar" style="width:32%"></span></div>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">a fixed substitution preserves the shape; a varying one flattens it</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>Reordering helps hide visible patterns</h3>
+                        <p>Substitution still leaves something behind: the <em>shape</em> of the message. A doubled letter in the plaintext is still a doubled something in the ciphertext. Word lengths, repeated bigrams, and characteristic structures all survive substitution untouched — which is why a glance at <code class="ct">QT<strong>SS</strong>F&nbsp;QT<strong>SS</strong>F</code> is enough to suspect "HELLO HELLO."</p>
+                        <p>Rearranging the characters destroys that. After a transposition, the doubled letters are no longer adjacent, repeated bigrams are scattered, and word shapes vanish. By itself transposition is also weak — letter frequencies are still English — but combined with substitution it removes a clue that substitution alone leaves behind.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-pattern-shape" aria-label="Pattern preservation under substitution versus destruction under transposition">
+                                <div class="ps-row">
+                                    <span class="ps-label">PLAIN</span>
+                                    <span class="ps-text">HE<span class="ps-mark">LL</span>O&nbsp;HE<span class="ps-mark">LL</span>O</span>
+                                    <span class="ps-note">visible pattern: double L, repeated word</span>
+                                </div>
+                                <div class="ps-row">
+                                    <span class="ps-label">SUB ONLY</span>
+                                    <span class="ps-text">QT<span class="ps-mark">SS</span>F&nbsp;QT<span class="ps-mark">SS</span>F</span>
+                                    <span class="ps-note">letters renamed, layout intact</span>
+                                </div>
+                                <div class="ps-row">
+                                    <span class="ps-label">TRANSP.</span>
+                                    <span class="ps-text">FQS&nbsp;TQF&nbsp;TSS</span>
+                                    <span class="ps-note">adjacency broken, shape gone</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">substitution renames letters but keeps their layout; transposition does the opposite</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>Multiple rounds create stronger mixing</h3>
+                        <p>One pass of substitution leaves position information intact. One pass of transposition leaves frequency information intact. Stacking them — substitute, then rearrange, then substitute again — spreads the influence of each plaintext letter further across the ciphertext, so an attacker can't peel back one layer in isolation and still see useful structure. The product cipher in this app is the simplest possible version: one of each.</p>
+                        <p>Modern block ciphers (AES, DES) take this much further: ten or more rounds of alternating substitution and permutation, each one mixing in part of the key. After enough rounds, flipping a single plaintext bit changes roughly half the ciphertext bits. That is the goal — every input affects every output, so no half-correct guess at the key produces a half-correct plaintext to score against.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-rounds" aria-label="Layered rounds of substitution and permutation">
+                                <div class="rd-stage">PLAINTEXT</div>
+                                <div class="rd-arrow">↓</div>
+                                <div class="rd-round">
+                                    <span class="rd-op">SUB</span>
+                                    <span class="rd-op">PERM</span>
+                                    <span class="rd-tag">round 1</span>
+                                </div>
+                                <div class="rd-arrow">↓</div>
+                                <div class="rd-round">
+                                    <span class="rd-op">SUB</span>
+                                    <span class="rd-op">PERM</span>
+                                    <span class="rd-tag">round 2</span>
+                                </div>
+                                <div class="rd-arrow">↓ … more rounds …</div>
+                                <div class="rd-stage rd-final">CIPHERTEXT</div>
+                            </div>
+                            <div class="topic-figure-caption">classical ciphers stop at one or two rounds; AES runs ten to fourteen</div>
+                        </div>
+                        <div class="topic-callout">
+                            Confusion + diffusion (Shannon, 1949)
+                            <span class="callout-gloss"><strong>Confusion</strong> = the relation between key and ciphertext is complex (substitution does this). <strong>Diffusion</strong> = each plaintext bit affects many ciphertext bits (rounds of permutation do this). A strong cipher needs both.</span>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>A strong cipher reveals as little as possible without the key</h3>
+                        <p>The ultimate test isn't "is it complicated" — it's how much an attacker can learn from the ciphertext alone. A weak cipher narrows the possible plaintexts to one (or a handful) very fast: frequency analysis on Caesar leaves you with a single English-shaped row. A strong cipher leaves the attacker with a huge set of plaintexts that are <em>all</em> equally plausible, with no shortcut to pick the real one short of trying every key.</p>
+                        <p>That is also why the security of a real cipher rests on the <em>key</em>, not on hiding the algorithm. Anyone can know how AES works; without the key, the ciphertext is consistent with astronomically many messages, and there is no way to tell which one was sent.</p>
+                        <div class="topic-callout">
+                            Kerckhoffs's principle (1883)
+                            <span class="callout-gloss">A cipher should remain secure even if the attacker knows everything about its design — only the key should be secret. "Security through obscurity" fails the moment the design leaks.</span>
+                        </div>
+                        <div class="topic-figure">
+                            <div class="diagram-candidates" aria-label="Number of plausible plaintexts that remain after seeing the ciphertext">
+                                <div class="cd-card cd-weak">
+                                    <span class="cd-label">WEAK CIPHER</span>
+                                    <div class="cd-list">
+                                        <span class="cd-line cd-real">ATTACK AT DAWN ←</span>
+                                        <span class="cd-line cd-strike">BUUBDL BU EBXO</span>
+                                        <span class="cd-line cd-strike">CVVCEM CV FCYP</span>
+                                        <span class="cd-line cd-strike">DWWDFN DW GDZQ</span>
+                                    </div>
+                                    <span class="cd-note">one row reads as English ⇒ key recovered</span>
+                                </div>
+                                <div class="cd-card cd-strong">
+                                    <span class="cd-label">STRONG CIPHER</span>
+                                    <div class="cd-list">
+                                        <span class="cd-line">ATTACK AT DAWN</span>
+                                        <span class="cd-line">RETREAT BY DUSK</span>
+                                        <span class="cd-line">HOLD POSITIONS</span>
+                                        <span class="cd-line">SEND MORE TROOPS</span>
+                                        <span class="cd-line cd-faint">… 2¹²⁸ more, all plausible …</span>
+                                    </div>
+                                    <span class="cd-note">every plausible message has some key that produces this ciphertext</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">the goal is not to make decryption hard — it is to make the ciphertext consistent with too many plaintexts to choose between</div>
+                        </div>
+                    </section>
+
+                </div>
+            </section>
+
             <!-- TOPIC: CAESAR -->
             <section id="topic-caesar" class="tab-panel topic-tab" role="tabpanel">
                 <div class="topic-column">
@@ -144,6 +294,7 @@
                     <section class="topic-section">
                         <h3><span class="num">1</span>What it is</h3>
                         <p>A Caesar cipher is the simplest substitution cipher: every letter in the message is shifted by the same fixed number of positions in the alphabet. With a shift of 3, <code>HELLO</code> becomes <code class="ct">KHOOR</code>. The Roman general Julius Caesar used a shift of 3 for his private correspondence — the trick is two thousand years old and trivial to break today.</p>
+                        <p><strong>Type:</strong> Caesar is <em>monoalphabetic</em>. That means the cipher uses one alphabet rule for the entire message, so a plaintext letter always turns into the same ciphertext letter every time it appears.</p>
                     </section>
 
                     <section class="topic-section">
@@ -226,6 +377,7 @@
                     <section class="topic-section">
                         <h3><span class="num">1</span>What it is</h3>
                         <p>A monoalphabetic substitution cipher replaces each letter with a fixed substitute. Unlike Caesar — where every letter shifts by the same amount — the substitution can be any one-to-one mapping. The key <em>is</em> that mapping: 26 plaintext letters paired with the 26 ciphertext letters in any order.</p>
+                        <p><strong>Type:</strong> This cipher is also <em>monoalphabetic</em>. There is one substitution alphabet for the whole message, so repeated plaintext letters always encrypt to the same ciphertext letters, which is exactly the pattern frequency analysis exploits.</p>
                     </section>
 
                     <section class="topic-section">
@@ -294,6 +446,7 @@
                     <section class="topic-section">
                         <h3><span class="num">1</span>What it is</h3>
                         <p>The Vigenère cipher uses a short repeating <em>keyword</em> instead of a single shift. Each plaintext letter is shifted by the corresponding key letter (A = shift 0, B = shift 1, …). Because the key cycles, the same plaintext letter encrypts to different cipher letters depending on its position. For three centuries it was considered "the unbreakable cipher."</p>
+                        <p><strong>Type:</strong> Vigenère is <em>polyalphabetic</em>. Instead of one fixed substitution alphabet, it rotates among several of them, so the same plaintext letter can encrypt in different ways at different positions.</p>
                     </section>
 
                     <section class="topic-section">
@@ -354,6 +507,151 @@
                     <div class="try-it-row">
                         <button type="button" class="try-it-btn" data-cipher="vigenere">Try it in the Crypto-solver →</button>
                         <span class="try-it-note">Switches to the solver tab and pre-selects Vigenère.</span>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TOPIC: PRODUCT -->
+            <section id="topic-product" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">Product Cipher</h2>
+                        <p class="topic-tagline">Two ciphers in series. Layering looks like it should multiply the difficulty — and doesn't.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>What it is</h3>
+                        <p>A <em>product cipher</em> is just one cipher applied on top of another. The classical pairing — and the one we use here — is a <strong>columnar transposition</strong> followed by a <strong>monoalphabetic substitution</strong>. The transposition rearranges the letters; the substitution then disguises them. Two keys, two layers, one combined ciphertext.</p>
+                        <p>This is the same idea behind every modern block cipher: alternate <em>permutation</em> and <em>substitution</em> rounds. Our toy version uses one of each.</p>
+                        <p><strong>Type:</strong> This toy product cipher is <em>not</em> polyalphabetic in the Vigenère sense. Its substitution layer is still monoalphabetic, but it becomes stronger by combining that fixed substitution with a separate transposition layer that scrambles positions.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>How it works — layer one, transposition</h3>
+                        <p>The key word's only job is to give you an order in which to read the columns. Take the key letters in their original positions, then sort them alphabetically — each letter carries its original column number along with it. The numbers, read out in alphabetical order of the letters, are the column read-out order.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-product-rank" aria-label="Deriving the column read-out order from the key ZEBRA">
+                                <div class="pr-block">
+                                    <span class="pr-block-label">KEY (original order)</span>
+                                    <div class="pr-strip">
+                                        <span class="pr-cell"><span class="pr-letter">Z</span><span class="pr-idx">0</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">E</span><span class="pr-idx">1</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">B</span><span class="pr-idx">2</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">R</span><span class="pr-idx">3</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">A</span><span class="pr-idx">4</span></span>
+                                    </div>
+                                </div>
+                                <div class="pr-arrow">↓ sort alphabetically, each letter keeps its original column number</div>
+                                <div class="pr-block">
+                                    <span class="pr-block-label">SORTED</span>
+                                    <div class="pr-strip">
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">A</span><span class="pr-idx">4</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">B</span><span class="pr-idx">2</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">E</span><span class="pr-idx">1</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">R</span><span class="pr-idx">3</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">Z</span><span class="pr-idx">0</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">the bottom row of indices — <code>4 2 1 3 0</code> — is the read-out order: read column 4 first, then 2, then 1, then 3, then 0</div>
+                        </div>
+                        <div class="topic-callout">
+                            The key word is a <em>permutation of column numbers</em> in disguise.
+                            <span class="callout-gloss">Any other 5-letter key whose letters rank in the same alphabetical pattern (e.g. <code>YDAQX</code>) produces the exact same ciphertext. The letters themselves never appear in the output — only their ranks matter.</span>
+                        </div>
+                        <p>With the column order in hand, write the plaintext into a grid that wide, row by row, then read out each column from top to bottom in the order you just derived.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-product-grid" aria-label="Columnar transposition of HELLOTHERE under key ZEBRA">
+                                <div class="pg-key">
+                                    <span class="pg-cell pg-keycell" data-rank="4">Z</span>
+                                    <span class="pg-cell pg-keycell" data-rank="2">E</span>
+                                    <span class="pg-cell pg-keycell" data-rank="1">B</span>
+                                    <span class="pg-cell pg-keycell" data-rank="3">R</span>
+                                    <span class="pg-cell pg-keycell" data-rank="0">A</span>
+                                </div>
+                                <div class="pg-rank">
+                                    <span class="pg-cell pg-rankcell">5</span>
+                                    <span class="pg-cell pg-rankcell">3</span>
+                                    <span class="pg-cell pg-rankcell">2</span>
+                                    <span class="pg-cell pg-rankcell">4</span>
+                                    <span class="pg-cell pg-rankcell">1</span>
+                                </div>
+                                <div class="pg-row"><span class="pg-cell">H</span><span class="pg-cell">E</span><span class="pg-cell">L</span><span class="pg-cell">L</span><span class="pg-cell">O</span></div>
+                                <div class="pg-row"><span class="pg-cell">T</span><span class="pg-cell">H</span><span class="pg-cell">E</span><span class="pg-cell">R</span><span class="pg-cell">E</span></div>
+                            </div>
+                            <div class="topic-figure-caption">read columns in rank order 1→5: <code class="ct">OE&nbsp;LE&nbsp;EH&nbsp;LR&nbsp;HT</code> &nbsp;·&nbsp; intermediate text after transposition</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>How it works — layer two, substitution</h3>
+                        <p>Take the transposed text and run it through a fixed letter-substitution table. The combined ciphertext now hides both <em>where</em> letters are (transposition) and <em>what</em> they are (substitution).</p>
+                        <div class="topic-figure">
+                            <div class="diagram-product-flow" aria-label="Two-layer encryption flow">
+                                <div class="pf-stage">
+                                    <span class="pf-label">PLAINTEXT</span>
+                                    <span class="pf-text">HELLOTHERE</span>
+                                </div>
+                                <div class="pf-arrow">↓ transpose (key ZEBRA)</div>
+                                <div class="pf-stage pf-mid">
+                                    <span class="pf-label">INTERMEDIATE</span>
+                                    <span class="pf-text">OELEEHLRHT</span>
+                                </div>
+                                <div class="pf-arrow">↓ substitute (95-char permutation)</div>
+                                <div class="pf-stage pf-final">
+                                    <span class="pf-label">CIPHERTEXT</span>
+                                    <span class="pf-text">G7TAA!T#!j</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">two keys, two passes &nbsp;·&nbsp; substitution chars are illustrative</div>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>How it's cracked here</h3>
+                        <p>The app does <em>not</em> brute-force both keys at once. Instead it exploits the fact that the two layers leak different kinds of structure. A columnar transposition scrambles <em>positions</em>; a monoalphabetic substitution scrambles <em>symbols</em>. That means you can attack the transposition first without already knowing the substitution key.</p>
+                        <p>Step 1: try plausible transposition widths. In this demo the generator uses widths <code>3</code> through <code>6</code>, so the solver searches those widths and hill-climbs different column orders for each one. It scores each attempt by the <em>bigram entropy</em> of the un-transposed text: when the columns are put back in the right order, English adjacencies reappear and the bigram distribution becomes less uniform.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-product-entropy" aria-label="Why the correct un-transposition has lower bigram entropy">
+                                <div class="pe-card pe-bad">
+                                    <span class="pe-label">WRONG COLUMN ORDER</span>
+                                    <span class="pe-text">QJ XR HM PT NK</span>
+                                    <div class="pe-bigrams">
+                                        <span class="pe-chip">QJ x1</span>
+                                        <span class="pe-chip">XR x1</span>
+                                        <span class="pe-chip">HM x1</span>
+                                        <span class="pe-chip">PT x1</span>
+                                        <span class="pe-chip">NK x1</span>
+                                    </div>
+                                    <span class="pe-score">many one-off bigrams → flatter distribution → higher entropy</span>
+                                </div>
+                                <div class="pe-card pe-good">
+                                    <span class="pe-label">RIGHT COLUMN ORDER</span>
+                                    <span class="pe-text">TH HE ER RE TH HE</span>
+                                    <div class="pe-bigrams">
+                                        <span class="pe-chip pe-repeat">TH x2</span>
+                                        <span class="pe-chip pe-repeat">HE x2</span>
+                                        <span class="pe-chip">ER x1</span>
+                                        <span class="pe-chip">RE x1</span>
+                                    </div>
+                                    <span class="pe-score">a few bigrams dominate → less uniform distribution → lower entropy</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">the solver is not looking for specific letter pairs like <code>TH</code> by name; it is looking for a distribution where some bigrams repeat a lot and most do not</div>
+                        </div>
+                        <div class="topic-callout">
+                            undo transposition first → English bigram shape comes back → then solve the substitution
+                            <span class="callout-gloss">Substitution renames characters, but it does not destroy the underlying shape of which bigrams are common and which are rare.</span>
+                        </div>
+                        <p>Step 2: keep the best few transposition candidates and check whether any of them already read like English. If one does, the solver stops there. If not, it treats each surviving candidate as an ordinary substitution cipher and runs the substitution solver on top of it.</p>
+                        <p>So the attack is really: guess the width, repair the column order, then finish the remaining substitution layer. That is why the cipher is weaker than “transposition keyspace times substitution keyspace” makes it sound: the layers can be attacked <em>separately</em> instead of all at once. Real block ciphers avoid this by using many tightly mixed rounds, so no half-correct state is easy to score.</p>
+                    </section>
+
+                    <div class="try-it-row">
+                        <button type="button" class="try-it-btn" data-cipher="product">Try it in the Crypto-solver →</button>
+                        <span class="try-it-note">Switches to the solver tab and pre-selects Product.</span>
                     </div>
 
                 </div>

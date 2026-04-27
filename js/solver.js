@@ -401,6 +401,7 @@ function countFrequencies(text) {
 // spending many moves on punctuation. That makes the solver much less likely
 // to invent apostrophes where a plain letter is clearly the better read.
 const LETTERS_BY_FREQ = ' etaoinsrhldcumfwgypbvkjxqz'.split('');
+const SPACE_SCOUT_CANDIDATES = 6;
 
 /**
  * Build an initial cipher->plaintext mapping by matching cipher character
@@ -431,6 +432,32 @@ function buildInitialMapping(ciphertext) {
     mapping[cipherByFreq[i]] = cipherByFreq[i];
   }
   return mapping;
+}
+
+function buildInitialMappingVariants(ciphertext, maxSpaceCandidates = SPACE_SCOUT_CANDIDATES) {
+  const counts = countFrequencies(ciphertext);
+  const cipherByFreq = Object.keys(counts).sort(
+    (a, b) => counts[b] - counts[a]
+  );
+  const mappedCipherChars = cipherByFreq.slice(0, Math.min(cipherByFreq.length, LETTERS_BY_FREQ.length));
+  const baseMapping = buildInitialMapping(ciphertext);
+  const variants = [{ ...baseMapping }];
+  const currentSpaceCipher = mappedCipherChars.find((ch) => baseMapping[ch] === ' ');
+
+  if (!currentSpaceCipher) return variants;
+
+  for (let i = 0; i < Math.min(mappedCipherChars.length, maxSpaceCandidates); i++) {
+    const candidate = mappedCipherChars[i];
+    if (candidate === currentSpaceCipher) continue;
+
+    const variant = { ...baseMapping };
+    const candidatePlain = variant[candidate];
+    variant[currentSpaceCipher] = candidatePlain;
+    variant[candidate] = ' ';
+    variants.push(variant);
+  }
+
+  return variants;
 }
 
 /**
@@ -756,9 +783,21 @@ function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
   const caesarDecoded = caesar.decoded;
 
   // --- Step 2: Frequency-based initial mapping ---
-  const mapping = buildInitialMapping(ciphertext);
+  const seedMappings = buildInitialMappingVariants(ciphertext);
+  let mapping = { ...seedMappings[0] };
   let decoded = applyMapping(ciphertext, mapping);
   let currentScore = scoreDecoded(decoded);
+
+  for (let i = 1; i < seedMappings.length; i++) {
+    const candidateMapping = seedMappings[i];
+    const candidateDecoded = applyMapping(ciphertext, candidateMapping);
+    const candidateScore = scoreDecoded(candidateDecoded);
+    if (candidateScore > currentScore) {
+      mapping = { ...candidateMapping };
+      decoded = candidateDecoded;
+      currentScore = candidateScore;
+    }
+  }
 
   // If one Caesar shift dominates all others, it's a Caesar cipher
   if (caesar.dominant && caesar.shift !== 0) {
@@ -827,7 +866,6 @@ function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
   const T_START = 20;
   const T_MIN = 0.01;
 
-  const initialMapping = { ...mapping };
   let bestScore = currentScore;
   let bestMapping = { ...mapping };
   let bestDecoded = decoded;
@@ -838,7 +876,9 @@ function* createSolverIterator(ciphertext, { rounds = DEFAULT_ROUNDS } = {}) {
     // explore very different regions of the search space.
     if (round > 0) {
       const broadRestart = round % 4 === 0;
-      const sourceMapping = broadRestart ? initialMapping : bestMapping;
+      const sourceMapping = broadRestart
+        ? seedMappings[Math.floor(round / 4) % seedMappings.length]
+        : bestMapping;
 
       for (const ch of cipherChars) mapping[ch] = sourceMapping[ch];
 

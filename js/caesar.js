@@ -6,6 +6,7 @@ import {
     PRINTABLE_CHARS,
     MAX_TEXT_LENGTH,
 } from "./constants.js";
+import { productEncrypt, parseProductKey } from "./product.js";
 
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
@@ -137,6 +138,10 @@ export function initCaesar(tab) {
                 return substitutionEncrypt(sourceText, keyInput.value);
             case "vigenere":
                 return vigenereEncrypt(sourceText, keyInput.value);
+            case "product": {
+                const { transKey, subKey } = parseProductKey(keyInput.value);
+                return productEncrypt(sourceText, transKey, subKey);
+            }
             case "caesar":
             default:
                 return caesarShift(sourceText, currentShift());

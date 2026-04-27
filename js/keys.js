@@ -30,6 +30,26 @@ export function randomKey(cipherType) {
       }
       return word;
     }
+    case "product": {
+      // 3–6 char transposition key, then a 95-char substitution permutation,
+      // joined with "|". Reusing the vigenere/substitution generators keeps the
+      // distribution identical to those single-cipher keys.
+      const transLen = 3 + Math.floor(Math.random() * 4); // 3–6 chars
+      let transKey = "";
+      for (let i = 0; i < transLen; i++) {
+        transKey += String.fromCharCode(PRINTABLE_START + Math.floor(Math.random() * PRINTABLE_RANGE));
+      }
+      let subKey = SUBSTITUTION_ALPHABET;
+      while (subKey === SUBSTITUTION_ALPHABET) {
+        const alphabet = [...PRINTABLE_CHARS];
+        for (let i = alphabet.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [alphabet[i], alphabet[j]] = [alphabet[j], alphabet[i]];
+        }
+        subKey = alphabet.join("");
+      }
+      return `${transKey}|${subKey}`;
+    }
     default:
       return "";
   }

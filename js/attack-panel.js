@@ -1,5 +1,6 @@
 import { createSolverIterator, findEnglishSpans, countFrequencies } from "./solver.js";
 import { createVigenereSolverIterator } from "./vigenere-solver.js";
+import { createProductSolverIterator } from "./product-solver.js";
 
 export function initAttackPanel(panel) {
   // Query all DOM elements from the attack panel HTML
@@ -20,12 +21,20 @@ export function initAttackPanel(panel) {
   const mappingTableWrap = panel.querySelector(".mapping-table-wrap");
   const attackBody = panel.querySelector(".attack-body");
 
-  let mode = "substitution";       // "substitution" | "vigenere"
+  let mode = "substitution";       // "substitution" | "vigenere" | "product"
   let vigenereWrap = null;         // container for .ioc-chart + .key-row
   let iocChart = null;             // DOM element
   let keyRow = null;               // DOM element
   let iocBarEls = [];              // array of .ioc-bar elements, indexed by length-1
   let keyCellEls = [];             // array of .key-cell elements, indexed by column
+
+  // Product cipher render mode reuses .ioc-chart (width candidates) and
+  // .key-row (column read-out order), and keeps the mapping table visible.
+  let productWrap = null;
+  let productWidthChart = null;
+  let productOrderRow = null;
+  let productWidthBarEls = [];
+  let productOrderCellEls = [];
 
   let iterator = null;
   let playing = false;
@@ -129,6 +138,7 @@ export function initAttackPanel(panel) {
   // --- Vigenère render mode (stubs — filled in Task 6) ---
 
   function buildVigenereUI() {
+    attackBody.dataset.mode = "vigenere";
     if (mappingTableWrap) mappingTableWrap.hidden = true;
 
     vigenereWrap = document.createElement("div");
@@ -261,6 +271,161 @@ export function initAttackPanel(panel) {
     iocBarEls = [];
     keyCellEls = [];
     if (mappingTableWrap) mappingTableWrap.hidden = false;
+    if (attackBody.dataset.mode === "vigenere") {
+      attackBody.dataset.mode = "substitution";
+    }
+  }
+
+  // --- Product render mode ---
+
+  function buildProductUI(ciphertext) {
+    attackBody.dataset.mode = "product";
+    // Substitution mapping table stays — it's half the cipher.
+    buildMappingTable(ciphertext);
+
+    productWrap = document.createElement("div");
+    productWrap.className = "product-wrap";
+
+    const widthBlock = document.createElement("div");
+    widthBlock.className = "ioc-wrap";
+    const widthHeading = document.createElement("h4");
+    widthHeading.className = "panel-heading";
+    widthHeading.textContent = "Transposition width";
+    widthBlock.appendChild(widthHeading);
+    productWidthChart = document.createElement("div");
+    productWidthChart.className = "ioc-chart";
+    widthBlock.appendChild(productWidthChart);
+    productWrap.appendChild(widthBlock);
+
+    const orderBlock = document.createElement("div");
+    orderBlock.className = "key-wrap";
+    const orderHeading = document.createElement("h4");
+    orderHeading.className = "panel-heading";
+    orderHeading.textContent = "Column order";
+    orderBlock.appendChild(orderHeading);
+    productOrderRow = document.createElement("div");
+    productOrderRow.className = "key-row";
+    orderBlock.appendChild(productOrderRow);
+    productWrap.appendChild(orderBlock);
+
+    attackBody.insertBefore(productWrap, attackBody.firstChild);
+    productWidthBarEls = [];
+    productOrderCellEls = [];
+  }
+
+  function ensureProductWidthBars(bars) {
+    if (!productWidthChart) return;
+    if (productWidthBarEls.length === bars.length) return;
+
+    productWidthChart.innerHTML = "";
+    productWidthBarEls = [];
+    for (const entry of bars) {
+      const bar = document.createElement("div");
+      bar.className = "ioc-bar";
+      bar.dataset.state = "computing";
+      const fill = document.createElement("div");
+      fill.className = "ioc-bar-fill";
+      bar.appendChild(fill);
+      const label = document.createElement("span");
+      label.className = "ioc-bar-label";
+      label.textContent = String(entry.width);
+      bar.appendChild(label);
+      productWidthChart.appendChild(bar);
+      productWidthBarEls.push(bar);
+    }
+  }
+
+  function ensureProductOrderCells(width) {
+    if (!productOrderRow) return;
+    if (productOrderCellEls.length === width) return;
+
+    productOrderRow.innerHTML = "";
+    productOrderCellEls = [];
+    for (let i = 0; i < width; i++) {
+      const cell = document.createElement("span");
+      cell.className = "key-cell";
+      cell.textContent = "·";
+      cell.dataset.state = "empty";
+      productOrderRow.appendChild(cell);
+      productOrderCellEls.push(cell);
+    }
+  }
+
+  function updateProductUI(data) {
+    const bars = data.widthBars ?? [];
+    ensureProductWidthBars(bars);
+
+    if (bars.length > 0) {
+      // Scores are log-probabilities (negative). Normalise to a 0..100% bar
+      // height by mapping (min..max) across the visible bars.
+      let minScore = Infinity;
+      let maxScore = -Infinity;
+      for (const b of bars) {
+        if (Number.isFinite(b.score)) {
+          if (b.score < minScore) minScore = b.score;
+          if (b.score > maxScore) maxScore = b.score;
+        }
+      }
+      const range = (maxScore - minScore) || 1;
+
+      for (let i = 0; i < bars.length; i++) {
+        const el = productWidthBarEls[i];
+        if (!el) continue;
+        const fill = el.firstElementChild;
+        let pct = Number.isFinite(bars[i].score) ? ((bars[i].score - minScore) / range) * 100 : 0;
+        pct = Math.max(4, Math.min(100, pct));
+        fill.style.height = `${pct}%`;
+        el.dataset.state = bars[i].status;
+      }
+    }
+
+    const order = data.transOrder ?? [];
+    if (order.length > 0) ensureProductOrderCells(order.length);
+
+    for (let i = 0; i < productOrderCellEls.length; i++) {
+      const cell = productOrderCellEls[i];
+      const idx = order[i];
+      if (idx === undefined || idx === null) {
+        cell.textContent = "·";
+        cell.dataset.state = "empty";
+        continue;
+      }
+      const previous = cell.textContent;
+      const text = String(idx);
+      cell.textContent = text;
+
+      if (data.phase === "SOLVED") {
+        cell.dataset.state = "locked";
+      } else if (
+        data.swappedColumns &&
+        (i === data.swappedColumns[0] || i === data.swappedColumns[1])
+      ) {
+        cell.dataset.state = "swapping";
+        cell.addEventListener("animationend", () => {
+          cell.dataset.state = "tentative";
+        }, { once: true });
+      } else if (previous !== text || cell.dataset.state === "empty") {
+        cell.dataset.state = "tentative";
+      }
+    }
+
+    if (data.mapping) {
+      updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
+    }
+  }
+
+  function teardownProductUI() {
+    if (productWrap) {
+      productWrap.remove();
+      productWrap = null;
+    }
+    productWidthChart = null;
+    productOrderRow = null;
+    productWidthBarEls = [];
+    productOrderCellEls = [];
+    if (attackBody.dataset.mode === "product") {
+      attackBody.dataset.mode = "substitution";
+    }
   }
 
   // --- Score sparkline (canvas) ---
@@ -384,6 +549,8 @@ export function initAttackPanel(panel) {
 
     if (mode === "vigenere") {
       updateVigenereUI(data);
+    } else if (mode === "product") {
+      updateProductUI(data);
     } else {
       updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
     }
@@ -419,14 +586,19 @@ export function initAttackPanel(panel) {
     if (!playing || !iterator) return;
 
     // At 1× every phase is throttled (ANALYZING/MAPPING/DECODING would otherwise
-    // blast at 60 steps/sec). At higher speeds only REFINING scales; setup phases
-    // stay at 1/frame so they don't artificially stall.
+    // blast at 60 steps/sec). At higher speeds, iterative search phases scale
+    // with the slider so long-running passes don't stall.
     let stepsThisFrame;
     if (speedMultiplier() === 1) {
       stepAccumulator += stepsPerFrame();
       stepsThisFrame = Math.floor(stepAccumulator);
       stepAccumulator -= stepsThisFrame;
-    } else if (currentPhase === "REFINING") {
+    } else if (
+      currentPhase === "DECODING" ||
+      currentPhase === "REFINING" ||
+      currentPhase === "REFINING_TRANS" ||
+      currentPhase === "REFINING_SUBST"
+    ) {
       stepsThisFrame = stepsPerFrame();
     } else {
       stepsThisFrame = 1;
@@ -498,6 +670,7 @@ export function initAttackPanel(panel) {
     stateLabel.style.color = "";
     if (hide) attackPanel.hidden = true;
     setState("IDLE");
+    attackBody.dataset.mode = "substitution";
     scoreValue.textContent = "0";
     cipherRow.innerHTML = "";
     plainRow.innerHTML = "";
@@ -512,6 +685,7 @@ export function initAttackPanel(panel) {
     }
 
     teardownVigenereUI();
+    teardownProductUI();
   }
 
   playBtn.addEventListener("click", () => {
@@ -548,11 +722,20 @@ export function initAttackPanel(panel) {
       if (!attackPanel.hidden) drawSparkline();
     });
 
-    mode = options.cipherType === "vigenere" ? "vigenere" : "substitution";
+    if (options.cipherType === "vigenere") {
+      mode = "vigenere";
+    } else if (options.cipherType === "product") {
+      mode = "product";
+    } else {
+      mode = "substitution";
+    }
 
     if (mode === "vigenere") {
       buildVigenereUI();
       iterator = createVigenereSolverIterator(ciphertext);
+    } else if (mode === "product") {
+      buildProductUI(ciphertext);
+      iterator = createProductSolverIterator(ciphertext, options);
     } else {
       buildMappingTable(ciphertext);
       iterator = createSolverIterator(ciphertext, options);
