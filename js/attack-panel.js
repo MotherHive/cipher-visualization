@@ -40,13 +40,14 @@ export function initAttackPanel(panel) {
 
   // Mini-Lucifer render mode shows the DDT heatmap, the vote histogram across
   // K_4 candidates, and the recovered round-key/master-key result.
+  let solverStatus = null;         // top status banner shared by all solvers
   let luciferWrap = null;
   let luciferDdtGrid = null;
   let luciferDdtCells = [];        // length 256, indexed [Δin*16 + Δout]
   let luciferVoteChart = null;
   let luciferVoteBars = [];        // length 256, one bar per K_4 candidate
+  let luciferVoteAxisCells = [];   // 16 grouped labels under the vote chart
   let luciferResult = null;        // result card element
-  let luciferStatus = null;        // status banner element
 
   let iterator = null;
   let playing = false;
@@ -65,8 +66,8 @@ export function initAttackPanel(panel) {
   let sparklineResizeObserver = null;
 
   function speedMultiplier() {
-    const exp = Number.parseInt(speedSlider?.value ?? "2", 10);
-    return Math.pow(10, Number.isNaN(exp) ? 2 : exp);
+    const exp = Number.parseInt(speedSlider?.value ?? "0", 10);
+    return Math.pow(10, Number.isNaN(exp) ? 0 : exp);
   }
 
   function stepsPerFrame() {
@@ -147,6 +148,136 @@ export function initAttackPanel(panel) {
     }
   }
 
+  function buildSolverStatus() {
+    if (solverStatus) solverStatus.remove();
+    solverStatus = document.createElement("div");
+    solverStatus.className = "solver-status";
+    attackBody.insertBefore(solverStatus, attackBody.firstChild);
+  }
+
+  function insertModePanel(el) {
+    if (!solverStatus) {
+      attackBody.insertBefore(el, attackBody.firstChild);
+      return;
+    }
+    attackBody.insertBefore(el, solverStatus.nextSibling);
+  }
+
+  function setSolverStatus(phase, detail) {
+    if (!solverStatus) return;
+    solverStatus.dataset.phase = phase ?? "";
+    solverStatus.textContent = detail;
+  }
+
+  function getSubstitutionStatusText(data) {
+    if (data.phase === "ANALYZING") {
+      const tested = typeof data.shift === "number" ? data.shift + 1 : data.iteration ?? 0;
+      return `Testing all 95 Caesar shifts first (${tested} / 95) to see whether this is a straight shift cipher or a full substitution alphabet.`;
+    }
+    if (data.phase === "MAPPING") {
+      return "Building a frequency-based starting alphabet from the ciphertext before the hill-climb begins.";
+    }
+    if (data.phase === "REFINING") {
+      return "Hill-climbing the substitution key: swapping common ciphertext symbols, rescoring the plaintext, and keeping moves that improve English n-gram fit.";
+    }
+    if (data.phase === "SOLVED") {
+      if (data.caesar) {
+        return `Solved as a Caesar cipher with shift ${data.shift ?? 0}. The best shift produced readable English without needing substitution search.`;
+      }
+      return "Best substitution alphabet locked in. The plaintext now scores as the strongest English-like decode found during the search.";
+    }
+    if (data.phase === "FAILED") {
+      return "The search stalled without a confident English decode. A longer ciphertext usually gives the substitution hill-climb much better traction.";
+    }
+    return "Frequency analysis starts with a Caesar sweep; if no single shift wins clearly, the solver seeds a substitution alphabet and improves it with guided swaps.";
+  }
+
+  function getVigenereStatusText(data) {
+    const activeLength = (data.iocBars ?? []).find((bar) => bar.status === "computing")?.length
+      ?? (data.iocBars ?? []).find((bar) => bar.status === "winner")?.length;
+    const resolvedColumns = (data.key ?? []).filter((ch) => ch !== null && ch !== undefined).length;
+
+    if (data.phase === "ANALYZING") {
+      return `Sweeping key lengths with Index of Coincidence (${data.iteration ?? 0} / ${data.totalIterations ?? "?"}). Peaks suggest lengths whose columns look like shifted English.`;
+    }
+    if (data.phase === "DECODING") {
+      const keyLength = activeLength ?? data.key?.length ?? "?";
+      const column = keyLength === "?" ? "?" : Math.min(resolvedColumns, keyLength);
+      return `Testing printable shifts for candidate key length ${keyLength}. Column ${column} is being treated like its own Caesar cipher and scored against English frequencies.`;
+    }
+    if (data.phase === "REFINING") {
+      return "Polishing the best Vigenere key one column at a time. Tiny +/-1 key adjustments are accepted only when the full plaintext score improves.";
+    }
+    if (data.phase === "SOLVED") {
+      return "Key length and per-column shifts are locked in. The decoded text passes the solver's English-coverage check.";
+    }
+    if (data.phase === "FAILED") {
+      return "No candidate key length produced enough English structure to pass the final check. More ciphertext usually makes the IoC peaks and column shifts clearer.";
+    }
+    return "The Vigenere solver scans likely key lengths first, then cracks each key column as a Caesar cipher, and finally nudges the full key into place.";
+  }
+
+  function getProductStatusText(data) {
+    const width = data.transWidth ?? "?";
+
+    if (data.phase === "ANALYZING") {
+      return `Untangling the transposition layer first. Width ${width} is being scored by bigram entropy while the solver searches for the column order that makes the text look most English-like.`;
+    }
+    if (data.phase === "REFINING_TRANS") {
+      return `Polishing the strongest transposition candidate at width ${width}. The solver is exploring nearby column orders before it touches the substitution layer underneath.`;
+    }
+    if (data.phase === "REFINING_SUBST") {
+      return `The transposition is fixed at width ${width}; now the remaining text is treated like a monoalphabetic substitution and refined with score-guided swaps.`;
+    }
+    if (data.phase === "SOLVED") {
+      return `Recovered a consistent transposition-and-substitution pairing. Width ${width} won the transposition search and the decoded text cleared the English-confidence check.`;
+    }
+    if (data.phase === "FAILED") {
+      return "The solver could not separate the transposition and substitution layers with enough confidence. Product ciphers usually need a bit more ciphertext for the entropy signal to stabilize.";
+    }
+    return "This solver peels the product cipher in the right order: it restores column structure first, then attacks the exposed substitution alphabet.";
+  }
+
+  function getLuciferStatusText(data) {
+    if (data.phase === "ANALYZING") {
+      return "Computing the S-box DDT and pinning the 3-round characteristic.";
+    }
+    if (data.phase === "SAMPLING") {
+      return `Generating chosen-plaintext pairs through the oracle (${data.pairsCollected ?? 0} / ${data.totalPairs ?? "?"}).`;
+    }
+    if (data.phase === "VOTING") {
+      return `Voting K₄ candidates (${data.votedSoFar ?? 0} / 256). High-vote ridges share a K₄ high nibble.`;
+    }
+    if (data.phase === "PEELING") {
+      const progress = typeof data.peelProgress === "number" && typeof data.peelTotal === "number"
+        ? ` - trying ${data.peelProgress.toLocaleString()} / ${data.peelTotal.toLocaleString()}`
+        : "";
+      const tryKey = typeof data.currentTryKey === "number"
+        ? ` [key 0x${data.currentTryKey.toString(16).padStart(4, "0")}]`
+        : "";
+      return `Brute-forcing the remaining 12 master-key bits under the top K₄ high-nibble guess (candidate ${data.candidateRank ?? 1} / 3)${progress}${tryKey}.`;
+    }
+    if (data.phase === "SOLVED") {
+      return "Master key recovered. Decryption matches printable English.";
+    }
+    if (data.phase === "FAILED") {
+      return "Could not lock onto a master key - increase pair count, or the input may not be Mini-Lucifer.";
+    }
+    return "Differential cryptanalysis assumes a chosen-plaintext oracle. The solver simulates that oracle by reusing your key.";
+  }
+
+  function updateSolverStatus(data) {
+    if (mode === "vigenere") {
+      setSolverStatus(data.phase, getVigenereStatusText(data));
+    } else if (mode === "product") {
+      setSolverStatus(data.phase, getProductStatusText(data));
+    } else if (mode === "lucifer") {
+      setSolverStatus(data.phase, getLuciferStatusText(data));
+    } else {
+      setSolverStatus(data.phase, getSubstitutionStatusText(data));
+    }
+  }
+
   // --- Vigenère render mode (stubs — filled in Task 6) ---
 
   function buildVigenereUI() {
@@ -184,7 +315,7 @@ export function initAttackPanel(panel) {
 
     vigenereWrap.appendChild(keyWrap);
 
-    attackBody.insertBefore(vigenereWrap, attackBody.firstChild);
+    insertModePanel(vigenereWrap);
 
     iocBarEls = [];
     keyCellEls = [];
@@ -320,7 +451,7 @@ export function initAttackPanel(panel) {
     orderBlock.appendChild(productOrderRow);
     productWrap.appendChild(orderBlock);
 
-    attackBody.insertBefore(productWrap, attackBody.firstChild);
+    insertModePanel(productWrap);
     productWidthBarEls = [];
     productOrderCellEls = [];
   }
@@ -450,13 +581,6 @@ export function initAttackPanel(panel) {
     luciferWrap = document.createElement("div");
     luciferWrap.className = "lucifer-wrap";
 
-    luciferStatus = document.createElement("div");
-    luciferStatus.className = "lucifer-status";
-    luciferStatus.textContent =
-      "Differential cryptanalysis assumes a chosen-plaintext oracle. " +
-      "The solver simulates that oracle by reusing your key.";
-    luciferWrap.appendChild(luciferStatus);
-
     // DDT heatmap: 16x16 grid of S-box differential counts -- a compact
     // reference tile, not a centerpiece. The chosen characteristic
     // (Δin=0xB → Δout=0x2) is marked.
@@ -505,6 +629,21 @@ export function initAttackPanel(panel) {
       luciferVoteBars.push(bar);
     }
     voteBlock.appendChild(luciferVoteChart);
+
+    const voteAxis = document.createElement("div");
+    voteAxis.className = "lucifer-vote-axis";
+    luciferVoteAxisCells = [];
+    for (let hi = 0; hi < 16; hi++) {
+      const cell = document.createElement("div");
+      cell.className = "lucifer-vote-axis-cell";
+      cell.innerHTML =
+        '<span class="lucifer-vote-axis-label" data-field="label"></span>' +
+        '<span class="lucifer-vote-axis-value" data-field="value">0</span>';
+      voteAxis.appendChild(cell);
+      luciferVoteAxisCells.push(cell);
+    }
+    voteBlock.appendChild(voteAxis);
+
     luciferWrap.appendChild(voteBlock);
 
     // Result card: recovered K_4 hi nibble + master key + decoded preview.
@@ -519,7 +658,7 @@ export function initAttackPanel(panel) {
       '<span class="lucifer-result-value" data-field="key">·</span>';
     luciferWrap.appendChild(luciferResult);
 
-    attackBody.insertBefore(luciferWrap, attackBody.firstChild);
+    insertModePanel(luciferWrap);
   }
 
   function makeDdtCorner() {
@@ -534,6 +673,35 @@ export function initAttackPanel(panel) {
     c.className = `lucifer-ddt-header ${cls}`;
     c.textContent = value.toString(16).toUpperCase();
     return c;
+  }
+
+  function formatLuciferVoteCount(value) {
+    if (value < 1000) return value.toString();
+    return new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+  }
+
+  function computeLuciferHiVotes(votes, evaluated) {
+    const hiVotes = new Array(16).fill(0);
+    const count = Math.max(0, Math.min(evaluated, votes.length));
+    for (let k = 0; k < count; k++) hiVotes[(k >>> 4) & 0xf] += votes[k];
+    return hiVotes;
+  }
+
+  function updateLuciferVoteAxis(hiVotes, topHi) {
+    if (luciferVoteAxisCells.length !== 16) return;
+    for (let hi = 0; hi < 16; hi++) {
+      const cell = luciferVoteAxisCells[hi];
+      const total = hiVotes[hi] ?? 0;
+      const label = cell.querySelector('[data-field="label"]');
+      const value = cell.querySelector('[data-field="value"]');
+      if (label) label.textContent = `0x${hi.toString(16).toUpperCase()}x`;
+      if (value) value.textContent = formatLuciferVoteCount(total);
+      cell.dataset.state = hi === topHi ? "leader" : "default";
+      cell.title = `K₄ high nibble 0x${hi.toString(16).toUpperCase()}x: ${total.toLocaleString()} total votes across 16 byte guesses`;
+    }
   }
 
   function updateLuciferUI(data) {
@@ -559,9 +727,15 @@ export function initAttackPanel(panel) {
       let maxV = 0;
       for (const v of data.votes) if (v > maxV) maxV = v;
       const denom = maxV || 1;
-      const hiVotes = data.hiVotes;
+      const evaluated =
+        typeof data.votedSoFar === "number"
+          ? Math.max(0, Math.min(data.votedSoFar, data.votes.length))
+          : data.votes.length;
+      const hiVotes = Array.isArray(data.hiVotes)
+        ? data.hiVotes
+        : computeLuciferHiVotes(data.votes, evaluated);
       let topHi = -1;
-      if (hiVotes) {
+      if (hiVotes.length > 0) {
         let best = -1;
         for (let i = 0; i < hiVotes.length; i++) {
           if (hiVotes[i] > best) { best = hiVotes[i]; topHi = i; }
@@ -572,9 +746,12 @@ export function initAttackPanel(panel) {
       for (let k = 0; k < 256; k++) {
         const bar = luciferVoteBars[k];
         const v = data.votes[k];
+        const hiLabel = `0x${((k >>> 4) & 0xf).toString(16).toUpperCase()}x`;
         bar.style.height = `${(v / denom) * 100}%`;
         bar.dataset.state = ((k >>> 4) & 0xf) === topHi ? "leader" : "default";
+        bar.title = `K₄ = 0x${k.toString(16).padStart(2, "0").toUpperCase()}: ${v.toLocaleString()} vote${v === 1 ? "" : "s"} (all ${hiLabel} guesses can tie because the low nibble is not recovered here)`;
       }
+      updateLuciferVoteAxis(hiVotes, topHi);
     }
 
     // Result card.
@@ -607,33 +784,6 @@ export function initAttackPanel(panel) {
       }
     }
 
-    // Status banner: mirror the current sub-phase so the pedagogy is legible.
-    if (luciferStatus) {
-      let detail = "";
-      if (data.phase === "ANALYZING") {
-        detail = "Computing the S-box DDT and pinning the 3-round characteristic.";
-      } else if (data.phase === "SAMPLING") {
-        detail = `Generating chosen-plaintext pairs through the oracle (${data.pairsCollected ?? 0} / ${data.totalPairs ?? "?"}).`;
-      } else if (data.phase === "VOTING") {
-        detail = `Voting K₄ candidates (${data.votedSoFar ?? 0} / 256). High-vote ridges share a K₄ high nibble.`;
-      } else if (data.phase === "PEELING") {
-        const progress = typeof data.peelProgress === "number" && typeof data.peelTotal === "number"
-          ? ` — trying ${data.peelProgress.toLocaleString()} / ${data.peelTotal.toLocaleString()}`
-          : "";
-        const tryKey = typeof data.currentTryKey === "number"
-          ? ` [key 0x${data.currentTryKey.toString(16).padStart(4, "0")}]`
-          : "";
-        detail = `Brute-forcing the remaining 12 master-key bits under the top K₄ high-nibble guess (candidate ${data.candidateRank ?? 1} / 3)${progress}${tryKey}.`;
-      } else if (data.phase === "SOLVED") {
-        detail = "Master key recovered. Decryption matches printable English.";
-      } else if (data.phase === "FAILED") {
-        detail = "Could not lock onto a master key — increase pair count, or the input may not be Mini-Lucifer.";
-      }
-      luciferStatus.dataset.phase = data.phase ?? "";
-      luciferStatus.textContent = detail
-        ? detail
-        : "Differential cryptanalysis assumes a chosen-plaintext oracle. The solver simulates that oracle by reusing your key.";
-    }
   }
 
   function teardownLuciferUI() {
@@ -645,8 +795,8 @@ export function initAttackPanel(panel) {
     luciferDdtCells = [];
     luciferVoteChart = null;
     luciferVoteBars = [];
+    luciferVoteAxisCells = [];
     luciferResult = null;
-    luciferStatus = null;
     if (mappingTableWrap) mappingTableWrap.hidden = false;
     if (scoreTrackWrap) scoreTrackWrap.hidden = false;
     if (attackBody.dataset.mode === "lucifer") {
@@ -782,6 +932,7 @@ export function initAttackPanel(panel) {
     } else {
       updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
     }
+    updateSolverStatus(data);
 
     if (Number.isFinite(data.score)) {
       scoreHistory.push({ score: data.score, accepted: data.accepted });
@@ -918,6 +1069,10 @@ export function initAttackPanel(panel) {
     teardownVigenereUI();
     teardownProductUI();
     teardownLuciferUI();
+    if (solverStatus) {
+      solverStatus.remove();
+      solverStatus = null;
+    }
   }
 
   playBtn.addEventListener("click", () => {
@@ -962,6 +1117,17 @@ export function initAttackPanel(panel) {
       mode = "lucifer";
     } else {
       mode = "substitution";
+    }
+
+    buildSolverStatus();
+    if (mode === "vigenere") {
+      setSolverStatus("", "The Vigenere solver scans likely key lengths first, then cracks each key column as a Caesar cipher, and finally nudges the full key into place.");
+    } else if (mode === "product") {
+      setSolverStatus("", "This solver peels the product cipher in the right order: it restores column structure first, then attacks the exposed substitution alphabet.");
+    } else if (mode === "lucifer") {
+      setSolverStatus("", "Differential cryptanalysis assumes a chosen-plaintext oracle. The solver simulates that oracle by reusing your key.");
+    } else {
+      setSolverStatus("", "Frequency analysis starts with a Caesar sweep; if no single shift wins clearly, the solver seeds a substitution alphabet and improves it with guided swaps.");
     }
 
     if (mode === "vigenere") {
