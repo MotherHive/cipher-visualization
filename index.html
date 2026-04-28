@@ -30,6 +30,7 @@
             <button role="tab" data-tab="topic-substitution" class="tab-btn">Substitution</button>
             <button role="tab" data-tab="topic-vigenere" class="tab-btn">Vigenère</button>
             <button role="tab" data-tab="topic-product" class="tab-btn">Product</button>
+            <button role="tab" data-tab="topic-lucifer" class="tab-btn">Mini-Lucifer</button>
         </nav>
         
 
@@ -60,6 +61,7 @@
                                 <option value="substitution">Substitution</option>
                                 <option value="vigenere">Vigenère</option>
                                 <option value="product">Product</option>
+                                <option value="lucifer">Mini-Lucifer</option>
                             </select>
                         </div>
 
@@ -98,10 +100,29 @@
                     </div>
 
                     <!-- Right: Analysis Panel -->
-                    <div class="panel panel-analysis">
-                        <h4 class="panel-heading">Frequency Analysis</h4>
+                    <div
+                        id="frequency-analysis-panel"
+                        class="panel panel-analysis"
+                        aria-labelledby="frequency-analysis-heading"
+                    >
+                        <div class="panel-header">
+                            <h4 id="frequency-analysis-heading" class="panel-heading">Frequency Analysis</h4>
+                            <button type="button" class="analysis-close-btn" aria-label="Close frequency analysis" hidden>
+                                Close
+                            </button>
+                        </div>
                         <div class="frequency-chart"></div>
                     </div>
+                    <button
+                        type="button"
+                        class="analysis-pop-tab"
+                        aria-controls="frequency-analysis-panel"
+                        aria-expanded="false"
+                        hidden
+                    >
+                        Frequency
+                    </button>
+                    <div class="analysis-sheet-backdrop" aria-hidden="true"></div>
 
                 </div>
 
@@ -199,17 +220,14 @@
                                 <div class="ps-row">
                                     <span class="ps-label">PLAIN</span>
                                     <span class="ps-text">HE<span class="ps-mark">LL</span>O&nbsp;HE<span class="ps-mark">LL</span>O</span>
-                                    <span class="ps-note">visible pattern: double L, repeated word</span>
                                 </div>
                                 <div class="ps-row">
                                     <span class="ps-label">SUB ONLY</span>
                                     <span class="ps-text">QT<span class="ps-mark">SS</span>F&nbsp;QT<span class="ps-mark">SS</span>F</span>
-                                    <span class="ps-note">letters renamed, layout intact</span>
                                 </div>
                                 <div class="ps-row">
                                     <span class="ps-label">TRANSP.</span>
                                     <span class="ps-text">FQS&nbsp;TQF&nbsp;TSS</span>
-                                    <span class="ps-note">adjacency broken, shape gone</span>
                                 </div>
                             </div>
                             <div class="topic-figure-caption">substitution renames letters but keeps their layout; transposition does the opposite</div>
@@ -218,7 +236,7 @@
 
                     <section class="topic-section">
                         <h3><span class="num">3</span>Multiple rounds create stronger mixing</h3>
-                        <p>One pass of substitution leaves position information intact. One pass of transposition leaves frequency information intact. Stacking them — substitute, then rearrange, then substitute again — spreads the influence of each plaintext letter further across the ciphertext, so an attacker can't peel back one layer in isolation and still see useful structure. The product cipher in this app is the simplest possible version: one of each.</p>
+                        <p>One pass of substitution leaves position information intact. One pass of transposition leaves frequency information intact. Stacking them across rounds — rearrange, substitute, then rearrange again, for example — spreads the influence of each plaintext letter further across the ciphertext, so an attacker can't peel back one layer in isolation and still see useful structure. The product cipher in this app is the simplest possible version: one transposition layer and one substitution layer.</p>
                         <p>Modern block ciphers (AES, DES) take this much further: ten or more rounds of alternating substitution and permutation, each one mixing in part of the key. After enough rounds, flipping a single plaintext bit changes roughly half the ciphertext bits. That is the goal — every input affects every output, so no half-correct guess at the key produces a half-correct plaintext to score against.</p>
                         <div class="topic-figure">
                             <div class="diagram-rounds" aria-label="Layered rounds of substitution and permutation">
@@ -227,13 +245,11 @@
                                 <div class="rd-round">
                                     <span class="rd-op">SUB</span>
                                     <span class="rd-op">PERM</span>
-                                    <span class="rd-tag">round 1</span>
                                 </div>
                                 <div class="rd-arrow">↓</div>
                                 <div class="rd-round">
                                     <span class="rd-op">SUB</span>
                                     <span class="rd-op">PERM</span>
-                                    <span class="rd-tag">round 2</span>
                                 </div>
                                 <div class="rd-arrow">↓ … more rounds …</div>
                                 <div class="rd-stage rd-final">CIPHERTEXT</div>
@@ -264,7 +280,6 @@
                                         <span class="cd-line cd-strike">CVVCEM CV FCYP</span>
                                         <span class="cd-line cd-strike">DWWDFN DW GDZQ</span>
                                     </div>
-                                    <span class="cd-note">one row reads as English ⇒ key recovered</span>
                                 </div>
                                 <div class="cd-card cd-strong">
                                     <span class="cd-label">STRONG CIPHER</span>
@@ -275,7 +290,6 @@
                                         <span class="cd-line">SEND MORE TROOPS</span>
                                         <span class="cd-line cd-faint">… 2¹²⁸ more, all plausible …</span>
                                     </div>
-                                    <span class="cd-note">every plausible message has some key that produces this ciphertext</span>
                                 </div>
                             </div>
                             <div class="topic-figure-caption">the goal is not to make decryption hard — it is to make the ciphertext consistent with too many plaintexts to choose between</div>
@@ -533,58 +547,58 @@
 
                     <section class="topic-section">
                         <h3><span class="num">2</span>How it works — layer one, transposition</h3>
-                        <p>The key word's only job is to give you an order in which to read the columns. Take the key letters in their original positions, then sort them alphabetically — each letter carries its original column number along with it. The numbers, read out in alphabetical order of the letters, are the column read-out order.</p>
+                        <p>The key word's only job is to give you an order in which to read the columns. First number the columns in their original left-to-right positions. Then sort the key letters alphabetically, carrying those original column numbers along with them. That sorted row is just a scratch step for deriving the read-out order.</p>
                         <div class="topic-figure">
-                            <div class="diagram-product-rank" aria-label="Deriving the column read-out order from the key ZEBRA">
+                            <div class="diagram-product-rank" aria-label="Deriving the column read-out order from the key CARGO">
                                 <div class="pr-block">
                                     <span class="pr-block-label">KEY (original order)</span>
                                     <div class="pr-strip">
-                                        <span class="pr-cell"><span class="pr-letter">Z</span><span class="pr-idx">0</span></span>
-                                        <span class="pr-cell"><span class="pr-letter">E</span><span class="pr-idx">1</span></span>
-                                        <span class="pr-cell"><span class="pr-letter">B</span><span class="pr-idx">2</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">C</span><span class="pr-idx">1</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">A</span><span class="pr-idx">2</span></span>
                                         <span class="pr-cell"><span class="pr-letter">R</span><span class="pr-idx">3</span></span>
-                                        <span class="pr-cell"><span class="pr-letter">A</span><span class="pr-idx">4</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">G</span><span class="pr-idx">4</span></span>
+                                        <span class="pr-cell"><span class="pr-letter">O</span><span class="pr-idx">5</span></span>
                                     </div>
                                 </div>
                                 <div class="pr-arrow">↓ sort alphabetically, each letter keeps its original column number</div>
                                 <div class="pr-block">
                                     <span class="pr-block-label">SORTED</span>
                                     <div class="pr-strip">
-                                        <span class="pr-cell pr-sorted"><span class="pr-letter">A</span><span class="pr-idx">4</span></span>
-                                        <span class="pr-cell pr-sorted"><span class="pr-letter">B</span><span class="pr-idx">2</span></span>
-                                        <span class="pr-cell pr-sorted"><span class="pr-letter">E</span><span class="pr-idx">1</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">A</span><span class="pr-idx">2</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">C</span><span class="pr-idx">1</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">G</span><span class="pr-idx">4</span></span>
+                                        <span class="pr-cell pr-sorted"><span class="pr-letter">O</span><span class="pr-idx">5</span></span>
                                         <span class="pr-cell pr-sorted"><span class="pr-letter">R</span><span class="pr-idx">3</span></span>
-                                        <span class="pr-cell pr-sorted"><span class="pr-letter">Z</span><span class="pr-idx">0</span></span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="topic-figure-caption">the bottom row of indices — <code>4 2 1 3 0</code> — is the read-out order: read column 4 first, then 2, then 1, then 3, then 0</div>
+                            <div class="topic-figure-caption">after sorting the key letters, the carried-along column numbers — <code>2 1 4 5 3</code> — give the read-out order: read column 2 first, then 1, then 4, then 5, then 3</div>
                         </div>
                         <div class="topic-callout">
                             The key word is a <em>permutation of column numbers</em> in disguise.
-                            <span class="callout-gloss">Any other 5-letter key whose letters rank in the same alphabetical pattern (e.g. <code>YDAQX</code>) produces the exact same ciphertext. The letters themselves never appear in the output — only their ranks matter.</span>
+                            <span class="callout-gloss">Any other 5-letter key whose letters rank in the same alphabetical pattern produces the exact same ciphertext. The letters themselves never appear in the output — only their ranks matter.</span>
                         </div>
-                        <p>With the column order in hand, write the plaintext into a grid that wide, row by row, then read out each column from top to bottom in the order you just derived.</p>
+                        <p>With that order in hand, go back to the original key order, write the plaintext into a grid that wide, row by row, and then read the columns in the derived order <code>2 1 4 5 3</code>. The sorting step is only how you compute that order.</p>
                         <div class="topic-figure">
-                            <div class="diagram-product-grid" aria-label="Columnar transposition of HELLOTHERE under key ZEBRA">
+                            <div class="diagram-product-grid" aria-label="Columnar transposition of HELLOTHERE under key CARGO">
                                 <div class="pg-key">
-                                    <span class="pg-cell pg-keycell" data-rank="4">Z</span>
-                                    <span class="pg-cell pg-keycell" data-rank="2">E</span>
-                                    <span class="pg-cell pg-keycell" data-rank="1">B</span>
+                                    <span class="pg-cell pg-keycell" data-rank="1">C</span>
+                                    <span class="pg-cell pg-keycell" data-rank="2">A</span>
                                     <span class="pg-cell pg-keycell" data-rank="3">R</span>
-                                    <span class="pg-cell pg-keycell" data-rank="0">A</span>
+                                    <span class="pg-cell pg-keycell" data-rank="4">G</span>
+                                    <span class="pg-cell pg-keycell" data-rank="5">O</span>
                                 </div>
                                 <div class="pg-rank">
-                                    <span class="pg-cell pg-rankcell">5</span>
-                                    <span class="pg-cell pg-rankcell">3</span>
-                                    <span class="pg-cell pg-rankcell">2</span>
-                                    <span class="pg-cell pg-rankcell">4</span>
                                     <span class="pg-cell pg-rankcell">1</span>
+                                    <span class="pg-cell pg-rankcell">2</span>
+                                    <span class="pg-cell pg-rankcell">3</span>
+                                    <span class="pg-cell pg-rankcell">4</span>
+                                    <span class="pg-cell pg-rankcell">5</span>
                                 </div>
                                 <div class="pg-row"><span class="pg-cell">H</span><span class="pg-cell">E</span><span class="pg-cell">L</span><span class="pg-cell">L</span><span class="pg-cell">O</span></div>
                                 <div class="pg-row"><span class="pg-cell">T</span><span class="pg-cell">H</span><span class="pg-cell">E</span><span class="pg-cell">R</span><span class="pg-cell">E</span></div>
                             </div>
-                            <div class="topic-figure-caption">read columns in rank order 1→5: <code class="ct">OE&nbsp;LE&nbsp;EH&nbsp;LR&nbsp;HT</code> &nbsp;·&nbsp; intermediate text after transposition</div>
+                            <div class="topic-figure-caption">now read the original columns in the derived order <code>2 → 1 → 4 → 5 → 3</code>: <code class="ct">EH&nbsp;HT&nbsp;LR&nbsp;OE&nbsp;LE</code> &nbsp;·&nbsp; intermediate text after transposition</div>
                         </div>
                     </section>
 
@@ -597,15 +611,15 @@
                                     <span class="pf-label">PLAINTEXT</span>
                                     <span class="pf-text">HELLOTHERE</span>
                                 </div>
-                                <div class="pf-arrow">↓ transpose (key ZEBRA)</div>
+                                <div class="pf-arrow">↓ transpose (key CARGO)</div>
                                 <div class="pf-stage pf-mid">
                                     <span class="pf-label">INTERMEDIATE</span>
-                                    <span class="pf-text">OELEEHLRHT</span>
+                                    <span class="pf-text">EHHTLROELE</span>
                                 </div>
                                 <div class="pf-arrow">↓ substitute (95-char permutation)</div>
                                 <div class="pf-stage pf-final">
                                     <span class="pf-label">CIPHERTEXT</span>
-                                    <span class="pf-text">G7TAA!T#!j</span>
+                                    <span class="pf-text">7TTA!#j7!7</span>
                                 </div>
                             </div>
                             <div class="topic-figure-caption">two keys, two passes &nbsp;·&nbsp; substitution chars are illustrative</div>
@@ -628,7 +642,6 @@
                                         <span class="pe-chip">PT x1</span>
                                         <span class="pe-chip">NK x1</span>
                                     </div>
-                                    <span class="pe-score">many one-off bigrams → flatter distribution → higher entropy</span>
                                 </div>
                                 <div class="pe-card pe-good">
                                     <span class="pe-label">RIGHT COLUMN ORDER</span>
@@ -639,7 +652,6 @@
                                         <span class="pe-chip">ER x1</span>
                                         <span class="pe-chip">RE x1</span>
                                     </div>
-                                    <span class="pe-score">a few bigrams dominate → less uniform distribution → lower entropy</span>
                                 </div>
                             </div>
                             <div class="topic-figure-caption">the solver is not looking for specific letter pairs like <code>TH</code> by name; it is looking for a distribution where some bigrams repeat a lot and most do not</div>
@@ -655,6 +667,335 @@
                     <div class="try-it-row">
                         <button type="button" class="try-it-btn" data-cipher="product">Try it in the Crypto-solver →</button>
                         <span class="try-it-note">Switches to the solver tab and pre-selects Product.</span>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TOPIC: MINI-LUCIFER -->
+            <section id="topic-lucifer" class="tab-panel topic-tab" role="tabpanel">
+                <div class="topic-column">
+
+                    <header class="topic-header">
+                        <h2 class="topic-title">Mini-Lucifer</h2>
+                        <p class="topic-tagline">A teaching-sized Feistel block cipher. Same shape as DES, small enough to see every round at once.</p>
+                    </header>
+
+                    <section class="topic-section">
+                        <h3><span class="num">1</span>From letters to bits</h3>
+                        <p>Every cipher on the previous tabs — Caesar, substitution, Vigenère, the product cipher — is a way of <em>shuffling letters</em>. They keep the alphabet recognisable, and that is exactly what lets frequency analysis tear them apart. The shape of the language survives the encryption.</p>
+                        <p>In 1971, Horst Feistel at IBM published <strong>Lucifer</strong>, the cipher that became the blueprint for DES three years later. Lucifer threw away the alphabet. It chops the message into fixed-size <em>blocks</em> of raw bits and stirs those bits with a key, round after round, until any structure that was in the input is gone.</p>
+                        <p>The version on this tab is a <em>mini</em> version: <strong>16-bit blocks, 16-bit key, four rounds</strong>. Real Lucifer used 128. Shrinking it makes every round visible on one screen, and makes the cipher weak enough that we can attack it later in this tab — the price of being able to see what is happening.</p>
+                        <div class="topic-callout">
+                            classical ciphers hide letters; block ciphers hide bits
+                            <span class="callout-gloss">Once you are working at the bit level, frequency analysis has nothing to count. The attacks change shape entirely — they look at how differences in input propagate through the cipher, not at how often a symbol appears.</span>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">2</span>The Feistel structure</h3>
+                        <p>A Feistel round is a small trick that turns <em>any</em> function into an invertible cipher. Split the 16-bit block into two 8-bit halves, <code>L</code> and <code>R</code>. Each round does this:</p>
+                        <div class="topic-figure">
+                            <div class="diagram-feistel" aria-label="One Feistel round: L and R halves, round function F, XOR, output halves swapped">
+                                <div class="lf-row lf-row-in">
+                                    <span class="lf-half">L</span>
+                                    <span class="lf-half">R</span>
+                                </div>
+                                <div class="lf-mid">
+                                    <span class="lf-arrow lf-arrow-down">↓</span>
+                                    <span class="lf-fbox">F(R, K<sub>i</sub>)</span>
+                                </div>
+                                <div class="lf-row lf-row-op">
+                                    <span class="lf-xor">⊕</span>
+                                    <span class="lf-passthru">passes through</span>
+                                </div>
+                                <div class="lf-row lf-row-out">
+                                    <span class="lf-half lf-half-out">L ⊕ F(R, K<sub>i</sub>)</span>
+                                    <span class="lf-half lf-half-out">R</span>
+                                </div>
+                                <div class="lf-swap">↔ swap halves, repeat next round</div>
+                            </div>
+                            <div class="topic-figure-caption">one round &nbsp;·&nbsp; the new right half is the old left half, XORed with F applied to the old right half</div>
+                        </div>
+                        <p>The clever part: <code>F</code> can be <em>any</em> function — it does not have to be invertible. The XOR with <code>L</code> is what makes the round reversible, because XORing with the same value twice cancels. Run the network with the round keys in reverse order and the plaintext comes back. Decryption is the same hardware as encryption, just with the key schedule played backwards.</p>
+                        <p>Mini-Lucifer runs four such rounds, so a single bit flipped in the plaintext gets fed through <code>F</code> four times. By the last round the change has rippled into roughly half the output bits — the <em>avalanche</em> property that distinguishes a block cipher from a substitution table.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">3</span>The round function and the S-box</h3>
+                        <p>The work happens inside <code>F</code>. Ours does three things, in order: XOR the 8-bit half with the 8-bit round key, split the result into two 4-bit nibbles, and look each nibble up in a small table called an <strong>S-box</strong>. Then it swaps the two output nibbles before handing the byte back to the round.</p>
+                        <p>An S-box is just a fixed permutation on 4-bit values — sixteen inputs, sixteen outputs, no pattern you can write as a simple equation. That non-linearity is what makes the cipher a cipher. Without it, every operation in the round would be a XOR, and the whole network would collapse into one giant XOR with a key-dependent constant, trivially solvable.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-sbox" aria-label="Heys' 4-bit S-box used by Mini-Lucifer: input nibble in hex, output nibble in hex">
+                                <div class="lf-sbox-row lf-sbox-header">
+                                    <span class="lf-sbox-label">in</span>
+                                    <span class="lf-sbox-cell">0</span><span class="lf-sbox-cell">1</span><span class="lf-sbox-cell">2</span><span class="lf-sbox-cell">3</span>
+                                    <span class="lf-sbox-cell">4</span><span class="lf-sbox-cell">5</span><span class="lf-sbox-cell">6</span><span class="lf-sbox-cell">7</span>
+                                    <span class="lf-sbox-cell">8</span><span class="lf-sbox-cell">9</span><span class="lf-sbox-cell">A</span><span class="lf-sbox-cell">B</span>
+                                    <span class="lf-sbox-cell">C</span><span class="lf-sbox-cell">D</span><span class="lf-sbox-cell">E</span><span class="lf-sbox-cell">F</span>
+                                </div>
+                                <div class="lf-sbox-row">
+                                    <span class="lf-sbox-label">out</span>
+                                    <span class="lf-sbox-cell lf-sbox-out">E</span><span class="lf-sbox-cell lf-sbox-out">4</span><span class="lf-sbox-cell lf-sbox-out">D</span><span class="lf-sbox-cell lf-sbox-out">1</span>
+                                    <span class="lf-sbox-cell lf-sbox-out">2</span><span class="lf-sbox-cell lf-sbox-out">F</span><span class="lf-sbox-cell lf-sbox-out">B</span><span class="lf-sbox-cell lf-sbox-out">8</span>
+                                    <span class="lf-sbox-cell lf-sbox-out">3</span><span class="lf-sbox-cell lf-sbox-out">A</span><span class="lf-sbox-cell lf-sbox-out">6</span><span class="lf-sbox-cell lf-sbox-out">C</span>
+                                    <span class="lf-sbox-cell lf-sbox-out">5</span><span class="lf-sbox-cell lf-sbox-out">9</span><span class="lf-sbox-cell lf-sbox-out">0</span><span class="lf-sbox-cell lf-sbox-out">7</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">the S-box from Heys' tutorial &nbsp;·&nbsp; e.g. 0xB → 0xC; chosen because its bias is well-studied and visible in a small attack</div>
+                        </div>
+                        <p>The exact contents of the table are not magic. Different S-boxes give different ciphers, and a great deal of real cryptographic engineering goes into picking values that make the cipher resistant to known attacks. Ours is borrowed from Howard Heys' tutorial — well-studied, and weak enough in a particular way that the differential attack later in this tab actually works on a four-round version.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">4</span>Round keys and the key schedule</h3>
+                        <p>Each round uses its own 8-bit <em>round key</em>. They are not chosen independently — they all come from the single 16-bit master key the user types. The rule that derives them is called the <strong>key schedule</strong>.</p>
+                        <p>Mini-Lucifer's schedule is deliberately simple: take the 16-bit key as a circular bit string, and read off four overlapping 8-bit windows, each starting four bits later than the previous one.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-keyschedule" aria-label="Round-key schedule: four 8-bit windows of the 16-bit master key, each shifted by four bits">
+                                <div class="lf-ks-row lf-ks-master">
+                                    <span class="lf-ks-label">master key (16 bits)</span>
+                                    <div class="lf-ks-bits">
+                                        <span class="lf-ks-bit">b<sub>0</sub></span><span class="lf-ks-bit">b<sub>1</sub></span><span class="lf-ks-bit">b<sub>2</sub></span><span class="lf-ks-bit">b<sub>3</sub></span>
+                                        <span class="lf-ks-bit">b<sub>4</sub></span><span class="lf-ks-bit">b<sub>5</sub></span><span class="lf-ks-bit">b<sub>6</sub></span><span class="lf-ks-bit">b<sub>7</sub></span>
+                                        <span class="lf-ks-bit">b<sub>8</sub></span><span class="lf-ks-bit">b<sub>9</sub></span><span class="lf-ks-bit">b<sub>10</sub></span><span class="lf-ks-bit">b<sub>11</sub></span>
+                                        <span class="lf-ks-bit">b<sub>12</sub></span><span class="lf-ks-bit">b<sub>13</sub></span><span class="lf-ks-bit">b<sub>14</sub></span><span class="lf-ks-bit">b<sub>15</sub></span>
+                                    </div>
+                                </div>
+                                <div class="lf-ks-row lf-ks-window lf-ks-k1"><span class="lf-ks-label">K<sub>1</sub></span><span class="lf-ks-range">bits 0–7</span></div>
+                                <div class="lf-ks-row lf-ks-window lf-ks-k2"><span class="lf-ks-label">K<sub>2</sub></span><span class="lf-ks-range">bits 4–11</span></div>
+                                <div class="lf-ks-row lf-ks-window lf-ks-k3"><span class="lf-ks-label">K<sub>3</sub></span><span class="lf-ks-range">bits 8–15</span></div>
+                                <div class="lf-ks-row lf-ks-window lf-ks-k4"><span class="lf-ks-label">K<sub>4</sub></span><span class="lf-ks-range">bits 12–15, then 0–3 (wraps)</span></div>
+                            </div>
+                            <div class="topic-figure-caption">four 8-bit windows, four bits apart &nbsp;·&nbsp; every master-key bit appears in exactly two round keys</div>
+                        </div>
+                        <p>This kind of schedule is fast and easy to reason about, but it is also part of what makes the cipher attackable: once an attacker recovers a single round key, they have already learned half of the master key for free, because the round keys overlap. Real ciphers like DES and AES use much more involved schedules specifically to break this kind of leakage.</p>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">5</span>Why this one is breakable</h3>
+                        <p>Two things break Mini-Lucifer, and both are intentional.</p>
+                        <p><strong>The keyspace is tiny.</strong> A 16-bit key is 65,536 possibilities. A modern laptop tries every one of them faster than this page renders. That alone makes the cipher useless for hiding anything — it is the same problem the original DES eventually hit, just much sooner.</p>
+                        <p><strong>The S-box leaks.</strong> The more interesting attack does not even bother brute-forcing keys. <em>Differential cryptanalysis</em> picks pairs of plaintexts that differ in a specific bit pattern, encrypts both, and looks at the difference between the ciphertexts. The key object is the S-box's <strong>differential distribution table</strong>: for each input difference, count how often each output difference appears. Good S-boxes keep those counts as flat as possible. Ours has visible spikes, so some input differences produce some output differences far more often than the others.</p>
+                        <p>That bias propagates through the rounds in a predictable way, and after enough chosen-plaintext pairs the bias points like an arrow at the round-4 key bits. Strip those off, repeat for round 3, and the master key falls out. That is the attack the solver tab will run, and the reason this S-box was chosen — its bias is large enough to see in a few thousand pairs.</p>
+                        <p>This is related to the real historical lesson of Lucifer and the block ciphers that followed it. Full-size Lucifer was far stronger than this toy, but it lived in the same design world: Feistel rounds, substitution boxes, and the need to stop small statistical biases from compounding across many rounds. Mini-Lucifer fails because we deliberately exaggerate the exact things later designers had to harden — short keys, too few rounds, a simplistic schedule, and an S-box bias large enough to measure directly. In that sense the demo is not “how real Lucifer broke in practice,” but a magnified version of the pressure that pushed real ciphers toward larger keys, better key schedules, and S-boxes chosen to resist differential attacks.</p>
+                        <div class="topic-callout">
+                            short keys lose to brute force; weak S-boxes lose to differentials
+                            <span class="callout-gloss">Real block ciphers fight both: longer keys (128+ bits) make brute force infeasible, and S-boxes engineered against differentials make the bias too small to exploit before the universe ends. Mini-Lucifer fights neither, on purpose.</span>
+                        </div>
+                    </section>
+
+                    <section class="topic-section">
+                        <h3><span class="num">6</span>How differential analysis works</h3>
+                        <div class="topic-figure">
+                            <div class="diagram-symbols" aria-label="Notation guide for the Mini-Lucifer differential-cryptanalysis explanation">
+                                <div class="ds-item"><code>P, P'</code><span>chosen plaintext pair</span></div>
+                                <div class="ds-item"><code>C, C'</code><span>ciphertext pair</span></div>
+                                <div class="ds-item"><code>ΔX</code><span><code>X ⊕ X'</code>, the XOR difference</span></div>
+                                <div class="ds-item"><code>L<sub>i</sub>, R<sub>i</sub></code><span>left and right half after round <code>i</code></span></div>
+                                <div class="ds-item"><code>F</code><span>round function</span></div>
+                                <div class="ds-item"><code>K<sub>i</sub></code><span>round-<code>i</code> subkey</span></div>
+                            </div>
+                            <div class="topic-figure-caption">notation map &nbsp;·&nbsp; the same symbols are used through the whole walkthrough</div>
+                        </div>
+                        <p>This is the final dry run of the whole attack, from the moment you sit down at your computer to the moment the remaining key search becomes trivial. The key idea is that most of the cleverness happens before the live attack starts: first you study the public design, then you collect lots of chosen pairs, and only then do you let statistics point at the key bits.</p>
+                        <h4 class="topic-subhead">Phase 1: The Lab Work (Before the Attack)</h4>
+                        <p>You do not touch the target cipher yet. You start with the public blueprints: the S-box, the Feistel structure, and the fixed wiring inside <code>F</code>. From the S-box's differential distribution table you discover the useful bias <code>Δin = 0xB → Δout = 0x2</code>, which happens <code>8 / 16</code> of the time.</p>
+                        <p>That immediately suggests the strategy. After the nibble swap inside <code>F</code>, that <code>0x2</code> becomes <code>0x20</code>. So if you choose the plaintext-side input difference <code>(ΔL<sub>0</sub>, ΔR<sub>0</sub>) = (0x20, 0x0B)</code>, or <code>0x200B</code> as one 16-bit block, the two <code>0x20</code> terms can cancel and create a zero difference in the next round.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-differential" aria-label="One row of the Mini-Lucifer S-box differential distribution table used to choose the attack difference">
+                                <div class="dd-bias">
+                                    <div class="dd-bias-title">precomputed DDT row used to pick the attack difference</div>
+                                    <div class="dd-bias-subtitle"><code>Δin = 0xB</code> · totals across 16 inputs</div>
+                                    <div class="dd-meter">
+                                        <span class="dd-meter-label"><code>Δout = 0x2</code></span>
+                                        <span class="dd-meter-track"><span class="dd-meter-fill dd-meter-fill-8"></span></span>
+                                        <span class="dd-meter-value">8 / 16</span>
+                                    </div>
+                                    <div class="dd-meter">
+                                        <span class="dd-meter-label"><code>Δout = 0x5, 0x7, 0xD, 0xF</code></span>
+                                        <span class="dd-meter-track"><span class="dd-meter-fill dd-meter-fill-2"></span></span>
+                                        <span class="dd-meter-value">8 / 16 each</span>
+                                    </div>
+                                    <div class="dd-meter">
+                                        <span class="dd-meter-label">all other <code>Δout</code></span>
+                                        <span class="dd-meter-track"><span class="dd-meter-fill dd-meter-fill-0"></span></span>
+                                        <span class="dd-meter-value">0 / 16</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">lab work &nbsp;·&nbsp; the DDT tells you which input difference is worth betting on before you send a single query</div>
+                        </div>
+                        <h4 class="topic-subhead">Phase 2: The Data Collection</h4>
+                        <p>Now the live attack starts. Pick any plaintext block <code>P</code> and manufacture its partner <code>P' = P ⊕ 0x200B</code>. Encrypt both under the same hidden key to get a ciphertext pair <code>(C, C')</code>. Then do it again. And again. In practice the attack works by repeating this a few thousand times.</p>
+                        <p>For the dry run here, imagine collecting about <code>5,000</code> chosen pairs. At this stage you do not know which pairs are useful. You are just building a large pile that contains some lucky pairs and a lot of ordinary noise. The reason differences are so helpful is that the unknown round key cancels when you XOR the paired states: <code>(R ⊕ K) ⊕ (R' ⊕ K) = R ⊕ R'</code>.</p>
+                        <h4 class="topic-subhead">Phase 3: The 3-Round Trail (The Invisible Path)</h4>
+                        <p>Inside the cipher, each collected pair now tries to follow the trail you planned in the lab. In round 1, the S-box sees <code>Δin = 0xB</code>; about half the time it produces the desired <code>Δout = 0x2</code>. After the nibble swap, that becomes <code>0x20</code>, which cancels the <code>ΔL<sub>0</sub> = 0x20</code> you injected. That is the zero-difference trick.</p>
+                        <p>Round 2 is then free: when <code>F</code> sees a zero input difference, it must output a zero difference too. In round 3 you need the same biased <code>1/2</code> event one more time. So the whole trail survives with probability <code>1/2 × 1 × 1/2 = 1/4</code>.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-trail" aria-label="Round-by-round propagation of the 3-round differential characteristic for Mini-Lucifer: differences in (L, R) at each stage and the per-round probability">
+                                <div class="dt-row dt-head">
+                                    <span class="dt-label">stage</span>
+                                    <span>ΔL</span>
+                                    <span>ΔR</span>
+                                    <span>round prob.</span>
+                                </div>
+                                <div class="dt-row">
+                                    <span class="dt-label">input</span>
+                                    <code>0x20</code><code>0x0B</code><span>—</span>
+                                </div>
+                                <div class="dt-row">
+                                    <span class="dt-label">after R1</span>
+                                    <code>0x0B</code><code>0x00</code><code>1/2</code>
+                                </div>
+                                <div class="dt-row dt-row-free">
+                                    <span class="dt-label">after R2</span>
+                                    <code>0x00</code><code>0x0B</code><code>1</code>
+                                </div>
+                                <div class="dt-row">
+                                    <span class="dt-label">after R3</span>
+                                    <code>0x0B</code><code>0x20</code><code>1/2</code>
+                                </div>
+                                <div class="dt-row dt-total">
+                                    <span class="dt-label">trail prob.</span>
+                                    <span></span><span></span>
+                                    <code>1/4</code>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">the key move &nbsp;·&nbsp; make round 1 cancel to zero so round 2 costs nothing</div>
+                        </div>
+                        <p>That means roughly <code>1,250</code> of the <code>5,000</code> collected pairs statistically reach the end of round 3 with the exact difference you predicted: <code>ΔL<sub>3</sub> = 0x0B</code> and <code>ΔR<sub>3</sub> = 0x20</code>. You do not know which specific pairs they are yet, but you know they are buried somewhere in your ciphertext pile.</p>
+                        <h4 class="topic-subhead">Phase 4: The Key Recovery (The Vote)</h4>
+                        <p>Now you sit at your computer with that pile of ciphertext pairs and a scoreboard for the <code>16</code> possible high nibbles of the last-round subkey. For each guess <code>g</code>, you partially undo round 4 and ask a yes-or-no question: did this guess recreate the predicted round-3 difference <code>ΔL<sub>3</sub> = 0x0B</code>?</p>
+                        <p>Wrong guesses only collect background noise. The right high nibble collects that same noise <em>plus</em> the extra votes contributed by the roughly <code>1,250</code> pairs that really did follow the trail. That is why the correct nibble rises above the pack.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-peel" aria-label="Worked Mini-Lucifer differential example using one ciphertext pair throughout: what the ciphertext reveals directly, what a wrong round-4 key guess produces, and what a right-high-nibble guess looks like">
+                                <div class="dp-banner">
+                                    same worked pair throughout &nbsp;·&nbsp; hidden master key <code>0x1234</code> &nbsp;·&nbsp; true round-4 subkey <code>0x41</code> &nbsp;·&nbsp; <code>P = 0x0002</code>, <code>P' = 0x2009</code> &nbsp;·&nbsp; <code>C = 0x2BF8</code>, <code>C' = 0x26D8</code>
+                                </div>
+                                <div class="dp-grid">
+                                    <div class="dp-card">
+                                        <div class="dp-title">what the ciphertext already gives us</div>
+                                        <div class="dp-line"><code>C_low = 0xF8</code></div>
+                                        <div class="dp-line"><code>C'_low = 0xD8</code></div>
+                                        <div class="dp-outcome"><code>0xF8 ⊕ 0xD8 = 0x20</code></div>
+                                    </div>
+                                    <div class="dp-card dp-card-bad">
+                                        <div class="dp-title">wrong high nibble: <code>g = 0x31</code></div>
+                                        <div class="dp-line"><code>L<sub>3</sub>* = 0x8E</code></div>
+                                        <div class="dp-line"><code>L<sub>3</sub>'* = 0x86</code></div>
+                                        <div class="dp-outcome"><code>0x8E ⊕ 0x86 = 0x08</code> → no vote</div>
+                                    </div>
+                                    <div class="dp-card dp-card-good">
+                                        <div class="dp-title">right high nibble: <code>g = 0x4A</code></div>
+                                        <div class="dp-line"><code>L<sub>3</sub>* = 0xF7</code></div>
+                                        <div class="dp-line"><code>L<sub>3</sub>'* = 0xFC</code></div>
+                                        <div class="dp-outcome"><code>0xF7 ⊕ 0xFC = 0x0B</code> → vote</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">same lucky pair throughout &nbsp;·&nbsp; one side is visible, a wrong guess gives junk, and a <code>0x4x</code> guess lands on <code>ΔL<sub>3</sub> = 0x0B</code></div>
+                        </div>
+                        <p>That is the whole vote: not “did we recover the exact bytes?” but “did this guess recover the expected gap?” In this toy cipher the winning stripe is <code>0x4x</code>, so the attack learns the first four bits of the last-round subkey immediately.</p>
+                        <div class="topic-figure">
+                            <div class="diagram-votes" aria-label="Mini-Lucifer vote histogram example grouped by round-4 key high nibble: a tall 4x stripe and small noise stripes elsewhere">
+                                <div class="dv-chart">
+                                    <div class="dv-group" style="--dv-height: 11%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x0x</code></div>
+                                        <div class="dv-value">~22 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x1x</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 9%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x2x</code></div>
+                                        <div class="dv-value">~18 votes</div>
+                                    </div>
+                                    <div class="dv-group dv-group-noise" style="--dv-height: 11%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x3x</code></div>
+                                        <div class="dv-value">~22 votes</div>
+                                    </div>
+                                    <div class="dv-group dv-group-peak" style="--dv-height: 94%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x4x</code></div>
+                                        <div class="dv-value">~1250 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x5x</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 9%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x6x</code></div>
+                                        <div class="dv-value">~18 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 12%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x7x</code></div>
+                                        <div class="dv-value">~24 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x8x</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 9%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0x9x</code></div>
+                                        <div class="dv-value">~18 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xAx</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 11%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xBx</code></div>
+                                        <div class="dv-value">~22 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xCx</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 9%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xDx</code></div>
+                                        <div class="dv-value">~18 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 10%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xEx</code></div>
+                                        <div class="dv-value">~20 votes</div>
+                                    </div>
+                                    <div class="dv-group" style="--dv-height: 11%;">
+                                        <div class="dv-stack"><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span><span class="dv-slat"></span></div>
+                                        <div class="dv-label"><code>0xFx</code></div>
+                                        <div class="dv-value">~22 votes</div>
+                                    </div>
+                                </div>
+                                <div class="dv-foot">
+                                    <span>every label is a high-nibble guess for <code>K<sub>4</sub></code>; most guesses stay near background noise at about <code>20</code> votes</span>
+                                    <span><code>0x4x</code> is the winning stripe: the trail votes pile on top of the noise and push it to about <code>1250</code> votes</span>
+                                </div>
+                            </div>
+                            <div class="topic-figure-caption">what the jackpot looks like &nbsp;·&nbsp; a whole <code>0x4x</code> stripe rises because the low nibble is still hidden</div>
+                        </div>
+                        <h4 class="topic-subhead">Phase 5: The Final Cleanup</h4>
+                        <p>The worked example also shows the blind spot. <code>0x4A</code> is not the literal round-4 byte — the true subkey byte is <code>0x41</code> — but any <code>0x4x</code> guess still votes yes because <code>ΔR<sub>3</sub> = 0x20</code> has a zero low nibble. So the attack recovers only the high nibble directly, not the full byte.</p>
+                        <p>That is still enough to finish the job. In Mini-Lucifer, the recovered <code>0x4x</code> stripe reveals master-key bits <code>0..3</code>, shrinking the key search from <code>65,536</code> possibilities to <code>4,096</code>. At that point differential cryptanalysis hands the rest to brute force: try every master key with that recovered prefix until one decrypts the ciphertext into sensible plaintext.</p>
+                    </section>
+
+                    <div class="try-it-row">
+                        <button type="button" class="try-it-btn" data-cipher="lucifer">Try it in the Crypto-solver →</button>
+                        <span class="try-it-note">Switches to the solver tab and pre-selects Mini-Lucifer.</span>
                     </div>
 
                 </div>

@@ -1,6 +1,7 @@
 import { PRINTABLE_RANGE } from "./constants.js";
 
 let activeAnimation = null;
+const MAX_HISTOGRAM_ROWS = 26;
 const ENGLISH_FREQ_FLOOR = 0.0001;
 const ENGLISH_FREQ_MAP = {
   " ": 0.1831,
@@ -87,9 +88,10 @@ export function renderHistogram(text, container) {
 
   if (sorted.length === 0) return;
 
+  const visibleChars = sorted.slice(0, MAX_HISTOGRAM_ROWS);
   const finalMax = finalCounts[sorted[0]];
   const totalPrintable = sorted.reduce((sum, char) => sum + finalCounts[char], 0);
-  const expectedCounts = sorted.map(
+  const expectedCounts = visibleChars.map(
     (_, index) => (ENGLISH_SHAPE[index] ?? ENGLISH_FREQ_FLOOR) * totalPrintable
   );
   const expectedMax = expectedCounts.reduce((max, count) => Math.max(max, count), 0);
@@ -99,7 +101,7 @@ export function renderHistogram(text, container) {
   const bars = {};
   const countLabels = {};
 
-  for (const [index, char] of sorted.entries()) {
+  for (const [index, char] of visibleChars.entries()) {
     const row = document.createElement("div");
     row.className = "hist-row";
 
@@ -164,7 +166,7 @@ export function renderHistogram(text, container) {
     }
 
     // Update bar widths and counts
-    for (const char of sorted) {
+    for (const char of visibleChars) {
       const count = liveCounts[char] || 0;
       bars[char].style.width = (count / scaleMax) * 100 + "%";
       countLabels[char].textContent = count;

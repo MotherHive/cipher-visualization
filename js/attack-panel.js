@@ -1,6 +1,7 @@
 import { createSolverIterator, findEnglishSpans, countFrequencies } from "./solver.js";
 import { createVigenereSolverIterator } from "./vigenere-solver.js";
 import { createProductSolverIterator } from "./product-solver.js";
+import { createLuciferSolverIterator } from "./lucifer-solver.js";
 
 export function initAttackPanel(panel) {
   // Query all DOM elements from the attack panel HTML
@@ -19,9 +20,10 @@ export function initAttackPanel(panel) {
 
   // Mapping-table wrap (mono-alphabetic render mode)
   const mappingTableWrap = panel.querySelector(".mapping-table-wrap");
+  const scoreTrackWrap = panel.querySelector(".score-track-wrap");
   const attackBody = panel.querySelector(".attack-body");
 
-  let mode = "substitution";       // "substitution" | "vigenere" | "product"
+  let mode = "substitution";       // "substitution" | "vigenere" | "product" | "lucifer"
   let vigenereWrap = null;         // container for .ioc-chart + .key-row
   let iocChart = null;             // DOM element
   let keyRow = null;               // DOM element
@@ -35,6 +37,16 @@ export function initAttackPanel(panel) {
   let productOrderRow = null;
   let productWidthBarEls = [];
   let productOrderCellEls = [];
+
+  // Mini-Lucifer render mode shows the DDT heatmap, the vote histogram across
+  // K_4 candidates, and the recovered round-key/master-key result.
+  let luciferWrap = null;
+  let luciferDdtGrid = null;
+  let luciferDdtCells = [];        // length 256, indexed [Δin*16 + Δout]
+  let luciferVoteChart = null;
+  let luciferVoteBars = [];        // length 256, one bar per K_4 candidate
+  let luciferResult = null;        // result card element
+  let luciferStatus = null;        // status banner element
 
   let iterator = null;
   let playing = false;
@@ -391,7 +403,7 @@ export function initAttackPanel(panel) {
         continue;
       }
       const previous = cell.textContent;
-      const text = String(idx);
+      const text = String(idx + 1);
       cell.textContent = text;
 
       if (data.phase === "SOLVED") {
@@ -424,6 +436,220 @@ export function initAttackPanel(panel) {
     productWidthBarEls = [];
     productOrderCellEls = [];
     if (attackBody.dataset.mode === "product") {
+      attackBody.dataset.mode = "substitution";
+    }
+  }
+
+  // --- Mini-Lucifer render mode ---
+
+  function buildLuciferUI() {
+    attackBody.dataset.mode = "lucifer";
+    if (mappingTableWrap) mappingTableWrap.hidden = true;
+    if (scoreTrackWrap) scoreTrackWrap.hidden = true;
+
+    luciferWrap = document.createElement("div");
+    luciferWrap.className = "lucifer-wrap";
+
+    luciferStatus = document.createElement("div");
+    luciferStatus.className = "lucifer-status";
+    luciferStatus.textContent =
+      "Differential cryptanalysis assumes a chosen-plaintext oracle. " +
+      "The solver simulates that oracle by reusing your key.";
+    luciferWrap.appendChild(luciferStatus);
+
+    // DDT heatmap: 16x16 grid of S-box differential counts -- a compact
+    // reference tile, not a centerpiece. The chosen characteristic
+    // (Δin=0xB → Δout=0x2) is marked.
+    const ddtBlock = document.createElement("div");
+    ddtBlock.className = "lucifer-block";
+    ddtBlock.dataset.block = "ddt";
+
+    luciferDdtGrid = document.createElement("div");
+    luciferDdtGrid.className = "lucifer-ddt";
+    luciferDdtCells = [];
+    // Header row: Δout labels
+    luciferDdtGrid.appendChild(makeDdtCorner());
+    for (let dout = 0; dout < 16; dout++) {
+      luciferDdtGrid.appendChild(makeDdtHeader(dout, "lucifer-ddt-col"));
+    }
+    // 16 rows, each with the Δin label then 16 cells
+    for (let din = 0; din < 16; din++) {
+      luciferDdtGrid.appendChild(makeDdtHeader(din, "lucifer-ddt-row"));
+      for (let dout = 0; dout < 16; dout++) {
+        const cell = document.createElement("span");
+        cell.className = "lucifer-ddt-cell";
+        if (din === 0xb && dout === 0x2) cell.dataset.target = "true";
+        luciferDdtGrid.appendChild(cell);
+        luciferDdtCells.push(cell);
+      }
+    }
+    ddtBlock.appendChild(luciferDdtGrid);
+    luciferWrap.appendChild(ddtBlock);
+
+    // Vote histogram: 256 bars, one per K_4 candidate.
+    const voteBlock = document.createElement("div");
+    voteBlock.className = "lucifer-block";
+    const voteHeading = document.createElement("h4");
+    voteHeading.className = "panel-heading";
+    voteHeading.textContent = "K₄ votes (256 candidates)";
+    voteBlock.appendChild(voteHeading);
+
+    luciferVoteChart = document.createElement("div");
+    luciferVoteChart.className = "lucifer-votes";
+    luciferVoteBars = [];
+    for (let k = 0; k < 256; k++) {
+      const bar = document.createElement("span");
+      bar.className = "lucifer-vote-bar";
+      bar.dataset.hi = ((k >>> 4) & 0xf).toString(16);
+      luciferVoteChart.appendChild(bar);
+      luciferVoteBars.push(bar);
+    }
+    voteBlock.appendChild(luciferVoteChart);
+    luciferWrap.appendChild(voteBlock);
+
+    // Result card: recovered K_4 hi nibble + master key + decoded preview.
+    luciferResult = document.createElement("div");
+    luciferResult.className = "lucifer-result";
+    luciferResult.innerHTML =
+      '<span class="lucifer-result-label">Phase</span>' +
+      '<span class="lucifer-result-value" data-field="phase">IDLE</span>' +
+      '<span class="lucifer-result-label">K₄ hi nibble</span>' +
+      '<span class="lucifer-result-value" data-field="k4hi">·</span>' +
+      '<span class="lucifer-result-label">Recovered key</span>' +
+      '<span class="lucifer-result-value" data-field="key">·</span>';
+    luciferWrap.appendChild(luciferResult);
+
+    attackBody.insertBefore(luciferWrap, attackBody.firstChild);
+  }
+
+  function makeDdtCorner() {
+    const c = document.createElement("span");
+    c.className = "lucifer-ddt-corner";
+    c.textContent = "Δ";
+    return c;
+  }
+
+  function makeDdtHeader(value, cls) {
+    const c = document.createElement("span");
+    c.className = `lucifer-ddt-header ${cls}`;
+    c.textContent = value.toString(16).toUpperCase();
+    return c;
+  }
+
+  function updateLuciferUI(data) {
+    // DDT — paint once on the first event that carries it.
+    if (data.ddt && luciferDdtCells.length === 256 && !luciferDdtGrid.dataset.painted) {
+      for (let din = 0; din < 16; din++) {
+        for (let dout = 0; dout < 16; dout++) {
+          const count = data.ddt[din][dout];
+          const cell = luciferDdtCells[din * 16 + dout];
+          // Skip the trivial Δin=0 row (always 16 at Δout=0).
+          const intensity = din === 0 ? 0 : Math.min(count / 8, 1);
+          cell.style.background = intensity > 0
+            ? `rgba(0, 232, 122, ${0.08 + intensity * 0.55})`
+            : "";
+          if (count > 0) cell.title = `Δ${din.toString(16).toUpperCase()} → Δ${dout.toString(16).toUpperCase()}: ${count}/16`;
+        }
+      }
+      luciferDdtGrid.dataset.painted = "true";
+    }
+
+    // Vote histogram.
+    if (data.votes && luciferVoteBars.length === 256) {
+      let maxV = 0;
+      for (const v of data.votes) if (v > maxV) maxV = v;
+      const denom = maxV || 1;
+      const hiVotes = data.hiVotes;
+      let topHi = -1;
+      if (hiVotes) {
+        let best = -1;
+        for (let i = 0; i < hiVotes.length; i++) {
+          if (hiVotes[i] > best) { best = hiVotes[i]; topHi = i; }
+        }
+      } else if (typeof data.bestK4 === "number") {
+        topHi = (data.bestK4 >>> 4) & 0xf;
+      }
+      for (let k = 0; k < 256; k++) {
+        const bar = luciferVoteBars[k];
+        const v = data.votes[k];
+        bar.style.height = `${(v / denom) * 100}%`;
+        bar.dataset.state = ((k >>> 4) & 0xf) === topHi ? "leader" : "default";
+      }
+    }
+
+    // Result card.
+    if (luciferResult) {
+      luciferResult.querySelector('[data-field="phase"]').textContent = data.phase ?? "—";
+      const k4hi =
+        typeof data.bestK4 === "number"
+          ? ((data.bestK4 >>> 4) & 0xf).toString(16).toUpperCase()
+          : "·";
+      luciferResult.querySelector('[data-field="k4hi"]').textContent = k4hi;
+      luciferResult.querySelector('[data-field="key"]').textContent =
+        data.recoveredKey ??
+        (typeof data.masterKey === "number"
+          ? data.masterKey.toString(16).padStart(4, "0")
+          : "·");
+    }
+
+    // When the solver transitions from hex display to recovered plaintext, the
+    // text-grid still has cells from the (longer) hex ciphertext. Trim trailing
+    // cells so the result reads as clean plaintext, not "plaintext... + dead hex".
+    if (
+      (data.phase === "PEELING" || data.phase === "SOLVED") &&
+      typeof data.decoded === "string"
+    ) {
+      const spans = gridContainer.querySelectorAll(".cell");
+      for (let i = data.decoded.length; i < spans.length; i++) {
+        spans[i].textContent = "";
+        delete spans[i].dataset.solve;
+        delete spans[i].dataset.english;
+      }
+    }
+
+    // Status banner: mirror the current sub-phase so the pedagogy is legible.
+    if (luciferStatus) {
+      let detail = "";
+      if (data.phase === "ANALYZING") {
+        detail = "Computing the S-box DDT and pinning the 3-round characteristic.";
+      } else if (data.phase === "SAMPLING") {
+        detail = `Generating chosen-plaintext pairs through the oracle (${data.pairsCollected ?? 0} / ${data.totalPairs ?? "?"}).`;
+      } else if (data.phase === "VOTING") {
+        detail = `Voting K₄ candidates (${data.votedSoFar ?? 0} / 256). High-vote ridges share a K₄ high nibble.`;
+      } else if (data.phase === "PEELING") {
+        const progress = typeof data.peelProgress === "number" && typeof data.peelTotal === "number"
+          ? ` — trying ${data.peelProgress.toLocaleString()} / ${data.peelTotal.toLocaleString()}`
+          : "";
+        const tryKey = typeof data.currentTryKey === "number"
+          ? ` [key 0x${data.currentTryKey.toString(16).padStart(4, "0")}]`
+          : "";
+        detail = `Brute-forcing the remaining 12 master-key bits under the top K₄ high-nibble guess (candidate ${data.candidateRank ?? 1} / 3)${progress}${tryKey}.`;
+      } else if (data.phase === "SOLVED") {
+        detail = "Master key recovered. Decryption matches printable English.";
+      } else if (data.phase === "FAILED") {
+        detail = "Could not lock onto a master key — increase pair count, or the input may not be Mini-Lucifer.";
+      }
+      luciferStatus.dataset.phase = data.phase ?? "";
+      luciferStatus.textContent = detail
+        ? detail
+        : "Differential cryptanalysis assumes a chosen-plaintext oracle. The solver simulates that oracle by reusing your key.";
+    }
+  }
+
+  function teardownLuciferUI() {
+    if (luciferWrap) {
+      luciferWrap.remove();
+      luciferWrap = null;
+    }
+    luciferDdtGrid = null;
+    luciferDdtCells = [];
+    luciferVoteChart = null;
+    luciferVoteBars = [];
+    luciferResult = null;
+    luciferStatus = null;
+    if (mappingTableWrap) mappingTableWrap.hidden = false;
+    if (scoreTrackWrap) scoreTrackWrap.hidden = false;
+    if (attackBody.dataset.mode === "lucifer") {
       attackBody.dataset.mode = "substitution";
     }
   }
@@ -551,6 +777,8 @@ export function initAttackPanel(panel) {
       updateVigenereUI(data);
     } else if (mode === "product") {
       updateProductUI(data);
+    } else if (mode === "lucifer") {
+      updateLuciferUI(data);
     } else {
       updateMappingTable(data.mapping, data.phase, data.swappedPair, data.accepted);
     }
@@ -597,7 +825,10 @@ export function initAttackPanel(panel) {
       currentPhase === "DECODING" ||
       currentPhase === "REFINING" ||
       currentPhase === "REFINING_TRANS" ||
-      currentPhase === "REFINING_SUBST"
+      currentPhase === "REFINING_SUBST" ||
+      currentPhase === "PEELING" ||
+      currentPhase === "SAMPLING" ||
+      currentPhase === "VOTING"
     ) {
       stepsThisFrame = stepsPerFrame();
     } else {
@@ -686,6 +917,7 @@ export function initAttackPanel(panel) {
 
     teardownVigenereUI();
     teardownProductUI();
+    teardownLuciferUI();
   }
 
   playBtn.addEventListener("click", () => {
@@ -726,6 +958,8 @@ export function initAttackPanel(panel) {
       mode = "vigenere";
     } else if (options.cipherType === "product") {
       mode = "product";
+    } else if (options.cipherType === "lucifer") {
+      mode = "lucifer";
     } else {
       mode = "substitution";
     }
@@ -736,6 +970,9 @@ export function initAttackPanel(panel) {
     } else if (mode === "product") {
       buildProductUI(ciphertext);
       iterator = createProductSolverIterator(ciphertext, options);
+    } else if (mode === "lucifer") {
+      buildLuciferUI();
+      iterator = createLuciferSolverIterator(ciphertext, options);
     } else {
       buildMappingTable(ciphertext);
       iterator = createSolverIterator(ciphertext, options);

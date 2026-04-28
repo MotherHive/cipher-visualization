@@ -5,6 +5,7 @@ import { initAttackPanel } from "./attack-panel.js";
 import { DEFAULT_ROUNDS, loadScoringData } from "./solver.js";
 import { initTopicTabs } from "./topic-tabs.js";
 import { initAmbientText } from "./ambient-text.js";
+import { parseLuciferKey } from "./lucifer.js";
 
 const CIPHER_INFO = {
   caesar: {
@@ -22,6 +23,10 @@ const CIPHER_INFO = {
   product: {
     label: "Product implementation note",
     title: "This demo's product cipher is a toy construction: one columnar transposition followed by one printable-ASCII substitution layer, not a full modern block cipher.",
+  },
+  lucifer: {
+    label: "Mini-Lucifer implementation note",
+    title: "This demo's Mini-Lucifer is a teaching-sized 16-bit, 4-round Feistel block cipher with a 16-bit key. Plaintext is paired into 16-bit blocks; ciphertext is shown as hex.",
   },
 };
 
@@ -80,8 +85,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cipherInfoTooltip) {
       cipherInfoTooltip.textContent = info?.title ?? "";
     }
-    solveBtn.disabled = false;
-    solveBtn.title = "";
+    if (cipher === "lucifer") {
+      const validKey = parseLuciferKey(keyInput.value) !== null;
+      solveBtn.disabled = !validKey;
+      solveBtn.title = validKey
+        ? ""
+        : "Mini-Lucifer solver needs a 4-hex-digit key (oracle simulation).";
+    } else {
+      solveBtn.disabled = false;
+      solveBtn.title = "";
+    }
     encryptBtn.title = "";
   }
 
@@ -91,6 +104,8 @@ document.addEventListener("DOMContentLoaded", () => {
     attackPanel.reset();
     syncCipherControls();
   });
+
+  keyInput.addEventListener("input", syncCipherControls);
 
   syncCipherControls();
 
@@ -105,9 +120,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!ciphertext) return;
 
     await scoringDataReady;
-    attackPanel.startSolve(ciphertext, {
+    const startOptions = {
       rounds: currentRounds(),
       cipherType: cipherSelect.value,
-    });
+    };
+    if (cipherSelect.value === "lucifer") {
+      const mk = parseLuciferKey(keyInput.value);
+      if (mk === null) return;
+      startOptions.masterKey = mk;
+    }
+    attackPanel.startSolve(ciphertext, startOptions);
   });
 });

@@ -1,18 +1,4 @@
-# UI / Design Ideas
-
-The strongest opportunity is to lean harder into the "crypto terminal / lab instrument" identity the site already has. The current design is clean and coherent; the next step is making each area feel more distinct and a little more dramatic.
-
-## Ideas
-
-- Add a thin live "signal strip" above the solver panels showing things like text length, repeated patterns found, estimated keyspace feel, and solver status. That would make the page feel more like an analysis console.
-- Make `Encrypt` feel theatrical. Instead of just updating the grid, briefly animate plaintext flowing through a pipeline: substitute, shift, transpose, then land in the ciphertext panel.
-- Turn the attack panel into more of a performance. Add phase colors, subtle pulses on accepted swaps, and a more prominent "temperature / score improving" feel so solving feels alive.
-- Add an "x-ray mode" toggle. It could highlight repeated digrams, doubled letters, column structure, or key-period grouping directly in the ciphertext grid.
-- Add short status microcopy throughout the app, like "pattern leak detected," "best key length candidate: 5," or "mapping stabilizing," to add personality without changing layout much.
-- Introduce a stronger landing moment. A short intro panel or "choose a demo" launcher on first load could make the site feel less like a static class page and more like an interactive exhibit.
-
-## Best Bang For Buck
-
-1. Cipher-specific accent themes.
-2. A live analysis/status strip above the solver.
-3. A more cinematic encrypt/solve animation pass.
+More rounds, but only moderately. Moving from 4 rounds to about 6–8 is probably the best first change. That makes the attack feel less toy-like, but still leaves room for a demo attack if the differential trail is designed carefully.
+Better diffusion. Adding a small permutation/mixing layer after the S-box output is very Lucifer-like and improves realism a lot. This is probably the highest realism-per-complexity upgrade.
+A somewhat larger block. Going from 16 bits to 24 or 32 bits is still workable for a browser demo. Jumping all the way to 128 bits would make the visualization and the attack much less practical.
+A slightly larger key, but only a little. 24 or maybe 32 bits can still be demo-friendly. Once you go much beyond that, the “finish by brute force” part stops being believable for an in-browser attack unless you also make the cryptanalysis recover far more of the key.

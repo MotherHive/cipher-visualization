@@ -7,6 +7,7 @@ import {
     MAX_TEXT_LENGTH,
 } from "./constants.js";
 import { productEncrypt, parseProductKey } from "./product.js";
+import { luciferEncrypt } from "./lucifer.js";
 
 export function initCaesar(tab) {
     const inputText = tab.querySelector(".input-text");
@@ -15,6 +16,11 @@ export function initCaesar(tab) {
     const encryptBtn = tab.querySelector(".encrypt-btn");
     const keyInput = tab.querySelector(".key-input");
     const freqChart = tab.querySelector(".frequency-chart");
+    const analysisPanel = tab.querySelector(".panel-analysis");
+    const analysisOpenBtn = tab.querySelector(".analysis-pop-tab");
+    const analysisCloseBtn = tab.querySelector(".analysis-close-btn");
+    const analysisBackdrop = tab.querySelector(".analysis-sheet-backdrop");
+    const mobileAnalysisQuery = window.matchMedia("(max-width: 640px)");
 
     let lastEncrypted = null;
     let currentDisplayedText = inputText.value.slice(0, MAX_TEXT_LENGTH);
@@ -22,6 +28,64 @@ export function initCaesar(tab) {
     let showingCiphertext = false;
     let revealFrameId = null;
     let revealRunId = 0;
+
+    function isFrequencySheetOpen() {
+        return analysisPanel?.classList.contains("is-open") ?? false;
+    }
+
+    function setFrequencySheetOpen(nextOpen, options = {}) {
+        const { restoreFocus = true } = options;
+        if (!analysisPanel || !analysisOpenBtn || !analysisCloseBtn || !analysisBackdrop) return;
+
+        const isMobile = mobileAnalysisQuery.matches;
+        const isOpen = isMobile && Boolean(nextOpen);
+
+        analysisPanel.classList.toggle("is-open", isOpen);
+        analysisBackdrop.classList.toggle("is-open", isOpen);
+        analysisBackdrop.setAttribute("aria-hidden", String(!isOpen));
+        analysisOpenBtn.setAttribute("aria-expanded", String(isOpen));
+        analysisPanel.setAttribute("aria-hidden", String(isMobile ? !isOpen : false));
+        analysisPanel.toggleAttribute("inert", isMobile && !isOpen);
+        document.body.classList.toggle("frequency-sheet-open", isOpen);
+
+        if (isOpen) {
+            requestAnimationFrame(() => analysisCloseBtn.focus());
+        } else if (restoreFocus && isMobile) {
+            requestAnimationFrame(() => analysisOpenBtn.focus());
+        }
+    }
+
+    function syncFrequencySheetMode() {
+        if (!analysisPanel || !analysisOpenBtn || !analysisCloseBtn || !analysisBackdrop) return;
+
+        analysisPanel.classList.add("mobile-sheet-ready");
+        analysisOpenBtn.classList.add("mobile-sheet-ready");
+        analysisBackdrop.classList.add("mobile-sheet-ready");
+
+        const isMobile = mobileAnalysisQuery.matches;
+        analysisOpenBtn.hidden = !isMobile;
+        analysisCloseBtn.hidden = !isMobile;
+
+        if (isMobile) {
+            analysisPanel.setAttribute("role", "dialog");
+            analysisPanel.setAttribute("aria-modal", "true");
+            if (!isFrequencySheetOpen()) {
+                analysisPanel.setAttribute("aria-hidden", "true");
+                analysisPanel.toggleAttribute("inert", true);
+            }
+            return;
+        }
+
+        analysisPanel.classList.remove("is-open");
+        analysisBackdrop.classList.remove("is-open");
+        analysisBackdrop.setAttribute("aria-hidden", "true");
+        analysisOpenBtn.setAttribute("aria-expanded", "false");
+        analysisPanel.removeAttribute("role");
+        analysisPanel.removeAttribute("aria-modal");
+        analysisPanel.removeAttribute("aria-hidden");
+        analysisPanel.toggleAttribute("inert", false);
+        document.body.classList.remove("frequency-sheet-open");
+    }
 
     function ensureGrid(text) {
         const currentCells = gridContainer.querySelectorAll(".cell");
@@ -142,6 +206,8 @@ export function initCaesar(tab) {
                 const { transKey, subKey } = parseProductKey(keyInput.value);
                 return productEncrypt(sourceText, transKey, subKey);
             }
+            case "lucifer":
+                return luciferEncrypt(sourceText, keyInput.value);
             case "caesar":
             default:
                 return caesarShift(sourceText, currentShift());
@@ -206,6 +272,41 @@ export function initCaesar(tab) {
         showCiphertext();
     });
 
+    analysisOpenBtn?.addEventListener("click", () => {
+        setFrequencySheetOpen(true);
+    });
+
+    analysisCloseBtn?.addEventListener("click", () => {
+        setFrequencySheetOpen(false);
+    });
+
+    analysisBackdrop?.addEventListener("click", () => {
+        setFrequencySheetOpen(false, { restoreFocus: false });
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && mobileAnalysisQuery.matches && isFrequencySheetOpen()) {
+            setFrequencySheetOpen(false);
+        }
+    });
+
+    if (typeof mobileAnalysisQuery.addEventListener === "function") {
+        mobileAnalysisQuery.addEventListener("change", syncFrequencySheetMode);
+    } else if (typeof mobileAnalysisQuery.addListener === "function") {
+        mobileAnalysisQuery.addListener(syncFrequencySheetMode);
+    }
+
+    const visibilityObserver = new MutationObserver(() => {
+        if ((tab.hidden || !tab.classList.contains("active")) && isFrequencySheetOpen()) {
+            setFrequencySheetOpen(false, { restoreFocus: false });
+        }
+    });
+    visibilityObserver.observe(tab, {
+        attributes: true,
+        attributeFilter: ["hidden", "class"],
+    });
+
+    syncFrequencySheetMode();
     showPlaintext();
 
     tab._getCurrentText = () => currentDisplayedText;

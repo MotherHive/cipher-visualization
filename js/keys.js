@@ -54,6 +54,11 @@ export function randomKey(cipherType) {
       }
       return `${transKey}|${subKey}`;
     }
+    case "lucifer": {
+      // 16-bit key as 4 hex digits.
+      const k = Math.floor(Math.random() * 0x10000);
+      return k.toString(16).padStart(4, "0");
+    }
     default:
       return "";
   }
